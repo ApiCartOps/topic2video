@@ -27,7 +27,7 @@
     <circle cx="420" cy="136" r="14" fill="#F05F41"/>
   </g>
   <!-- wordmark -->
-  <text x="330" y="215" font-family="Orbitron, Audiowide, 'Arial Black', sans-serif" font-size="88" font-weight="900" fill="#FFFFFF">anything<tspan fill="#A175F1">2</tspan>explainer</text>
+  <text x="330" y="215" font-family="Orbitron, Audiowide, 'Arial Black', sans-serif" font-size="88" font-weight="900" fill="#FFFFFF">topic<tspan fill="#A175F1">2</tspan>video</text>
   <line x1="334" y1="250" x2="834" y2="250" stroke="#6630F8" stroke-width="4" stroke-linecap="round"/>
   <text x="334" y="298" font-family="'Exo 2', 'Noto Sans SC', Arial, sans-serif" font-size="30" fill="#E6DCFF">Any topic → narrated motion-graphics explainer, drawn in code</text>
 </svg>
