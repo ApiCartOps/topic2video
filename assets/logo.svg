@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#A175F1" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#6630F8" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="16" y="16" width="480" height="480" rx="96" fill="#000000"/>
+  <rect x="16" y="16" width="480" height="480" rx="96" fill="none" stroke="#FFFFFF" stroke-width="6"/>
+  <circle cx="256" cy="256" r="170" fill="url(#glow)"/>
+  <!-- white line frame: the "anything" -->
+  <rect x="112" y="150" width="180" height="212" rx="18" fill="none" stroke="#FFFFFF" stroke-width="12"/>
+  <line x1="140" y1="198" x2="264" y2="198" stroke="#FFFFFF" stroke-width="10" stroke-linecap="round"/>
+  <line x1="140" y1="236" x2="250" y2="236" stroke="#FFFFFF" stroke-width="10" stroke-linecap="round"/>
+  <line x1="140" y1="274" x2="236" y2="274" stroke="#FFFFFF" stroke-width="10" stroke-linecap="round"/>
+  <!-- purple arrow: the transform -->
+  <path d="M312 256 L372 256" stroke="#A175F1" stroke-width="12" stroke-linecap="round"/>
+  <!-- purple play triangle: the explainer -->
+  <path d="M352 196 L424 256 L352 316 Z" fill="#6630F8" stroke="#A175F1" stroke-width="8" stroke-linejoin="round"/>
+  <circle cx="420" cy="136" r="14" fill="#F05F41"/>
+</svg>

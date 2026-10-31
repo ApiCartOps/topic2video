@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/banner.svg" alt="anything2explainer: any topic, turned into a narrated motion-graphics explainer drawn in code" width="100%">
+</p>
+
 # anything2explainer
 
 Turn any technical or science topic into a narrated motion-graphics explainer video, drawn entirely in code.
