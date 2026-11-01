@@ -5,3 +5,4 @@ fin_frames/
 stills/
 public/assets/*/audio.wav
 audio/cache/
+py/__pycache__/

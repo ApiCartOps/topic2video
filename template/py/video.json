@@ -1,0 +1,18 @@
+{
+  "slug": "demo",
+  "lang": "zh",
+  "bg": "stars",
+  "title": {
+    "big": "RAG",
+    "rest": "与知识库",
+    "en": "Retrieval-Augmented Generation",
+    "tagline": "让大模型开卷考试"
+  },
+  "chapter_tech": ["Why RAG", "Indexing", "Retrieval & Generation", "Evaluation & Advanced RAG"],
+  "credit": {
+    "kicker": "BASED ON",
+    "title": "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks",
+    "byline": "Lewis et al. · NeurIPS 2020",
+    "note": "all visuals drawn in code"
+  }
+}

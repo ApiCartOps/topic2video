@@ -45,6 +45,22 @@ cd <work-dir>
 npm run studio            # open the Remotion studio for preview
 ```
 
+### Python-only build (no Node.js or Remotion)
+
+`template/py/` builds the same kind of video with Python alone: the voiceover and timeline come from the same `script/narration.txt` format, and Pillow draws the frames and pipes them into ffmpeg. It runs with the same frame arithmetic as the Remotion build, so frame numbers match.
+
+```bash
+pip install -r template/py/requirements.txt   # numpy, Pillow, edge-tts, imageio-ffmpeg (bundles ffmpeg)
+cd <work-dir>                                  # the project folder that contains script/ and public/
+python py/explain.py build --ver v1            # tts → render → qc
+```
+
+- Stages can run on their own: `tts`, `render`, `qc`. `--engine dummy` skips the network and makes silent audio, which is useful for checking layout and timing.
+- Output: `renders/<slug>_v1.mp4`, a contact sheet at `renders/sheet_v1.png`, and `script/timeline.json` in the same schema as `tts_build.py` writes.
+- Per-video settings live in `py/video.json` (titles, chapter subtitles, optional closing credit, and the backdrop `stars` or `dots`). Optional keyword cards go in `script/cards.json`, for example `[{"sentence": "S03", "text": "检索增强", "sub": "Retrieval-Augmented"}]`.
+- Not included yet: the Remotion-only shot groups, HUD capsules, flow tracks and per-sentence custom graphics. The Python build draws titles, chapter cards, subtitles, the progress bar and keyword cards.
+- The English voice here uses edge-tts (cloud). The local kokoro engine from `tts_build.py` is not ported.
+
 ## Credits and third-party components
 
 - **Visual inspiration**: the look is inspired by the Douyin account "图灵宇宙" (Turing Universe). All frames are drawn in code; no footage or frames from other videos are used.
