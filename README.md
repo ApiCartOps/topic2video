@@ -1,3 +1,5 @@
+**English** · [हिन्दी](README.hi.md) · [اردو](README.ur.md) · [العربية](README.ar.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [Español](README.es.md) · [Italiano](README.it.md) · [Português](README.pt.md) · [Nederlands](README.nl.md) · [Русский](README.ru.md) · [Polski](README.pl.md)
+
 <p align="center">
   <img src="assets/banner.svg" alt="topic2video: any topic, turned into a narrated motion-graphics explainer drawn in code" width="100%">
 </p>
