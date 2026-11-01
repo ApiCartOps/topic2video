@@ -1,0 +1,12 @@
+# CHAPTER 1 The problem
+Good explainer videos usually take days to make.|Most of that time goes to drawing and timing.
+Topic2video turns any topic into a narrated video.|Every frame is drawn in code.
+# CHAPTER 2 How it works
+Give it a topic, or an article.|It writes a narration, split into short sentences.
+Then it synthesizes the voiceover,|and times every subtitle to the audio.
+Each frame is drawn in code,|so every video can be reproduced and edited.
+The Python build renders the whole video|without Node.js or Remotion.
+# CHAPTER 3 Try it
+Install the requirements, then run one command.
+You get an MP4, a contact sheet, and a timeline.
+Chinese and English narration both work.

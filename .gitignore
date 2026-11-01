@@ -15,3 +15,10 @@ template/分镜表.md
 template/render.done
 template/fin_count.txt
 .synapse/
+
+# LinkedIn demo build outputs (demo/build.py regenerates them)
+demo/renders/
+demo/audio/
+demo/public/
+demo/script/timeline.json
+demo/script/timeline.md
