@@ -1,6 +1,6 @@
 #!/bin/zsh
-# 前 N 秒样片（确认点 3：先给用户看风格，别等整片渲完）：preview.sh [秒数=30] [起始秒=0]
-#   → renders/<slug>_preview_<a>-<b>s.mp4（含配音/字幕/进度条；还没建的组是空画面，正常）
+# First N seconds for review (confirmation point 4: show the user the style before the full render finishes): preview.sh [seconds=30] [start-second=0]
+#   → renders/<slug>_preview_<a>-<b>s.mp4 (includes voiceover, subtitles and progress bar; groups not yet built show as empty frames, which is normal)
 set -e
 ROOT=$(cd "$(dirname "$0")/.." && pwd); cd "$ROOT"
 SEC=${1:-30}; FROM=${2:-0}

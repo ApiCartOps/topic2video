@@ -1,50 +1,50 @@
 /**
- * 文本宽度估算与自适应字号——纯函数，不测 DOM，所以渲染是确定性的（同一帧在任何机器上一样）。
+ * Text-width estimation and adaptive font size. Pure functions that do not measure the DOM, so rendering is deterministic (the same frame is identical on any machine).
  *
- * em 宽取自随模板附带的字体实测平均值（fontTools 量 wght 700–900）：
- *   Noto Sans SC：小写 .566 大写 .668 数字 .590 空格 .227 半角标点 .325 汉字 1.000
- *   带重音的拉丁字母（é ü ñ ß…）.49–.69 → 取 .58
- *   U+2000 起的标点 / 箭头 / 数学符号（— … “ ” → ∑ ≤ ×）在 Noto Sans SC 里几乎都是 1em
- *   （例外：en dash .53、em dash .88——按 1 高估是安全方向，只会更早缩字号）
- *   Audiowide 大写 .788 / Orbitron 大写 .815 / Exo 2 大写 .606  → 用 EM_* 系数换算
- * scripts/tts_build.py 里的 text_em() 是同一张表的 Python 版，改这里要同步改那边。
- * 用途：中文一块字幕 ≤16 字（≈704px）本来就装得下，但英文一块 8 个词就可能 1300px 出画，
- * 所以字幕、进度条章名、章节卡标题都过一遍 fitSize 兜底。真正的约束仍在文案侧（见 narration-storyboard.md）。
+ * Em widths are averages measured on the fonts bundled with the template (fontTools, weights 700–900):
+ *   Noto Sans SC: lowercase .566, uppercase .668, digits .590, space .227, half-width punctuation .325, CJK ideographs 1.000
+ *   Accented Latin letters (é ü ñ ß…) .49–.69, so .58 is used
+ *   Punctuation, arrows and math symbols from U+2000 on (— … “ ” → ∑ ≤ ×) are almost all 1em in Noto Sans SC
+ *   (exceptions: en dash .53, em dash .88. Treating them as 1 overestimates, which is the safe direction and only shrinks the font sooner)
+ *   Audiowide uppercase .788 / Orbitron uppercase .815 / Exo 2 uppercase .606 → converted with the EM_* factors
+ * text_em() in scripts/tts_build.py is the Python version of the same table. Change one, and update the other.
+ * Purpose: a Chinese subtitle chunk of up to 16 characters (≈704px) always fits, but an English chunk of 8 words can run to 1300px and off the frame,
+ * so subtitles, progress-bar chapter names and chapter-card titles all pass through fitSize as a fallback. The real constraint is still on the script side (see narration-storyboard.md).
  */
-export const EM_HEAVY = 1;      // Noto Sans SC（正文 / 字幕 / 标题）
-export const EM_WIDE = 1.18;    // Audiowide（片名、大写缩写）
-export const EM_ORB = 1.2;      // Orbitron（数字 / 章序号）
-export const EM_TECH = 0.92;    // Exo 2（英文技术词，斜体窄）
+export const EM_HEAVY = 1;      // Noto Sans SC (body text / subtitles / titles)
+export const EM_WIDE = 1.18;    // Audiowide (video title, uppercase abbreviations)
+export const EM_ORB = 1.2;      // Orbitron (numbers / chapter numerals)
+export const EM_TECH = 0.92;    // Exo 2 (English technical terms, narrow italic)
 
-/** 估算一段文字的宽度，单位 em（1em = fontSize px） */
+/** Estimates the width of a string, in em (1em = fontSize px) */
 export const textEm = (s: string, emScale = 1): number => {
   let em = 0;
   for (const ch of s) {
     const c = ch.codePointAt(0) ?? 32;
-    if (c >= 0x2000) em += 1;                              // CJK、全角标点，以及 U+2000 起的标点 / 箭头 / 数学符号
+    if (c >= 0x2000) em += 1;                              // CJK, fullwidth punctuation, and punctuation, arrows and math symbols from U+2000 on
     else if (ch === ' ') em += 0.227;
     else if (ch >= 'A' && ch <= 'Z') em += 0.668;
     else if (ch >= '0' && ch <= '9') em += 0.59;
     else if (ch >= 'a' && ch <= 'z') em += 0.566;
-    else if (c >= 0xc0 && c < 0x250) em += 0.58;           // 带重音的拉丁字母（Latin-1 / Extended-A / B）
-    else em += 0.325;                                      // 半角标点
+    else if (c >= 0xc0 && c < 0x250) em += 0.58;           // accented Latin letters (Latin-1 / Extended-A / B)
+    else em += 0.325;                                      // half-width punctuation
   }
   return em * emScale;
 };
 
-/** 字符数（按码点，不按 UTF-16 单元） */
+/** Character count (by code point, not by UTF-16 unit) */
 const charCount = (s: string): number => [...s].length;
 
 /**
- * 估算宽度（px）。letterSpacing 是 CSS 的 px 值：Chromium 在每个字符后面都加（含末字），
- * 且不随字号缩放，所以片头 / 章节卡这类带 letterSpacing 的大字必须把它算进去。
+ * Estimated width in px. letterSpacing is a CSS px value. Chromium adds it after every character, including the last,
+ * and it does not scale with font size. So large text with letterSpacing, such as the opening or chapter cards, must include it in the calculation.
  */
 export const textW = (s: string, size: number, emScale = 1, letterSpacing = 0): number => textEm(s, emScale) * size + letterSpacing * charCount(s);
 
 /**
- * 超宽就等比缩字号，最低到 minSize（默认 78%）。返回值保留 1 位小数，避免亚像素抖动。
- * letterSpacing 的那部分宽度不随字号变，先从 maxW 里扣掉再解字号。
- * 缩到 minSize 仍然超宽 → 说明文案违反了每块长度预算，改文案，不要指望这里。
+ * If the text is too wide, it scales the font proportionally, down to minSize (default 78%). The return value keeps one decimal place to avoid sub-pixel jitter.
+ * The letterSpacing portion of the width does not change with font size, so it is subtracted from maxW before solving for the font size.
+ * If it is still too wide at minSize, the copy violates the per-chunk length budget. Shorten the copy. Do not rely on this function.
  */
 export const fitSize = (s: string, maxW: number, size: number, minSize = size * 0.78, emScale = 1, letterSpacing = 0): number => {
   const em = textEm(s, emScale);

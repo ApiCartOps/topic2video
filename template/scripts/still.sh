@@ -1,6 +1,6 @@
 #!/bin/zsh
-# 出 still：still.sh <Comp: Video|Overlay|G1..G8> <帧号列表 1 起,逗号分隔> <输出目录(绝对路径)> [tag]
-# ⚠ 每个构建组只用一个 tag（如 g3），改代码后 rm -rf build_dev_<tag> 再跑；不要每次换新 tag（每个 bundle ≈40MB）。
+# Export stills: still.sh <Comp: Video|Overlay|G1..G8> <frame numbers starting at 1, comma-separated> <output dir (absolute path)> [tag]
+# ⚠ Use one tag per build group (such as g3). After code changes, run rm -rf build_dev_<tag> before rerunning. Do not switch to a new tag each time (each bundle is ≈40MB).
 set -e
 ROOT=$(cd "$(dirname "$0")/.." && pwd); cd "$ROOT"
 COMP=$1; FRAMES=$2; OUT=$3; TAG=${4:-$COMP}
@@ -11,7 +11,7 @@ mkdir -p "$OUT"
 for N in ${(s:,:)FRAMES}; do
   npx remotion still "$B" "$COMP" "$OUT/f_$(printf %04d $N).png" --frame=$((N-1)) --log=error
 done
-# 清理 4 小时以上没动过的 remotion 临时 bundle（只清明显已死的：这台机器上可能有别的
-# remotion 项目/agent 正在渲染，短阈值会删掉别人正在用的 bundle）。CLEAN_TMP=0 可关闭。
+# Clean up remotion temporary bundles untouched for more than 4 hours (only clearly dead ones: other remotion projects or agents may be rendering on this machine,
+# and a short threshold would delete a bundle someone else is using). Set CLEAN_TMP=0 to turn this off.
 [ "${CLEAN_TMP:-1}" = 1 ] && find "${TMPDIR:-/tmp}" -maxdepth 1 -name 'remotion-webpack-bundle-*' -mmin +240 -exec rm -rf {} + 2>/dev/null
 ls "$OUT" | wc -l

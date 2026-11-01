@@ -12,7 +12,7 @@ import {PreviewG6} from './shots/G6/Preview';
 import {PreviewG7} from './shots/G7/Preview';
 import {PreviewG8} from './shots/G8/Preview';
 
-// 主合成 Video + 覆盖层预览 + 8 个构建组预览（预览合成 = 覆盖层 + 本组镜头，无音频）
+// Main composition Video + overlay preview + 8 build-group previews (a preview composition = overlay + that group's shots, no audio)
 export const Root: React.FC = () => (
   <>
     <Composition id="Video" component={Video} durationInFrames={TOTAL_FRAMES} fps={FPS} width={W} height={H} />

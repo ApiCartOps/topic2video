@@ -1,84 +1,85 @@
-# 解说词、配音、分镜
+# Narration, voiceover, storyboard
 
-## 1. 解说词（`script/narration.txt`）
-格式：
+## 1. Narration (`script/narration.txt`)
+Format:
 ```
-# CHAPTER 1 章名（≤6 字，进度条章名）
-一句话|按竖线切成字幕块|每块 ≤16 字        ← 一行一句；竖线只切字幕，不影响朗读
-## gap 20                                     ← 可选：下一句前额外空白帧
+# CHAPTER 1 Chapter name (≤6 characters; this is the progress-bar label)
+One sentence|split with vertical bars into subtitle blocks|each block ≤16 characters   ← one sentence per line; the bars only split subtitles and do not change the reading
+## gap 20                                     ← optional: extra blank frames before the next sentence
 ```
-写法要点（对照 `examples/rag/narration.txt`）：
-- 结构：章数按内容定，不按时长定——一章讲透或多章概览都行，常见 3–5 章。第 1 章"为什么"（问题 → 类比 → 主角登场 → 出处），中间各章"怎么做"（按流水线分步，每步一句"第 N 步 + 动作"开头），末章"评估 + 进阶 + 争议 + 回到比喻收尾"。章少时把评估与进阶压进末章；章多时把"怎么做"拆得更细，不要靠灌水拉长。
-- 篇幅：**按用户定的时长取表里那一档**（如 3–5 分钟 → 40–50 句、1200–1500 字）。语速约 6 字/秒（英文约 2.5 词/秒），加留白后成片密度 4.5–5 字/秒。每句 ≤35 字，长句用竖线切成 2–5 块。写完先估时长，超/欠 15% 就加删句子。
-- 一个贯穿比喻（开卷考试）+ 一个贯穿示例（差旅报销），首尾呼应。
-- 数字只用调研文档 §数字清单里有出处的；给出机构和年份（"Anthropic 2024 年的实验"）；易变数字加"发布时/截至 X 年"。
-- 英文术语第一次出现时中文在前英文在后；缩写要读得出来（RAG、HNSW、BM25 直接读字母）。
-- 每句都要能画：写词时同步想"这句画什么"，画不出的句子改写或删。
-- 章节标题即进度条章名；章内小节名即 HUD 胶囊词（后面写进 config.ts）。
+Writing guidelines (compare with `examples/rag/narration.txt`):
+- Structure: the number of chapters follows the content, not the length. One chapter covered in depth, or several in overview, are both fine. Three to five chapters is typical. Chapter 1 covers "why" (problem, analogy, protagonist introduction, sources). The middle chapters cover "how" (step by step through the pipeline, each step opening with "Step N plus the action"). The final chapter covers evaluation, advanced topics, debates, and a close back to the analogy. With few chapters, put evaluation and advanced topics into the final chapter. With many chapters, split the "how" section more finely rather than padding to make it longer.
+- Length: **use the row in the table that matches the length the user chose** (for example 3–5 minutes → 40–50 sentences, 1200–1500 characters). Speaking rate is about 6 characters per second (about 2.5 English words per second). With pauses, the delivered density is 4.5–5 characters per second. Keep each sentence to 35 characters or fewer, and split long sentences into 2–5 blocks with bars. After drafting, estimate the duration. If it's off by 15% or more, add or remove sentences.
+- Use one running analogy (an open-book exam) and one running example (travel expense reimbursement), with the opening and closing echoing each other.
+- Numbers: use only figures that have a source in the research document's numbers list. Name the organization and year ("Anthropic's 2024 experiment"). Mark figures that change over time with "at release" or "as of year X".
+- English terms: on first use, give the Chinese first and the English after. Abbreviations must be pronounceable (RAG, HNSW, BM25 are read letter by letter).
+- Every sentence must be drawable. While writing a sentence, also think about "what does this sentence show". Rewrite or cut sentences you can't draw.
+- Chapter titles become the progress-bar labels. Section names inside chapters become the HUD capsule words (written later in config.ts).
 
-## 2. 配音（`scripts/tts_build.py`）
-- **跑之前先过 SKILL.md 的确认点 2（文案定稿）与确认点 3（配音）**：问一句用户有没有偏好的 TTS，没有就用默认，不要摆一堆选项让他挑。
-- 引擎（`TTS_ENGINE`，默认 `auto` 按解说词语言选）：
-  - `edge` **中文默认**。edge-tts，`VOICE=zh-CN-YunxiNeural RATE=+8%`（男声，科普感）；可选 YunjianNeural（激昂）/ YunyangNeural（播报）/ XiaoxiaoNeural（女声）。有词级边界，字幕节拍最准。
-  - `kokoro` **英文默认**。kokoro-82m 本地推理：`KOKORO_VOICE=am_liam KOKORO_LANG=a KOKORO_SPEED=1.0`——Liam，男声，与中文云希同定位。需 `pip install kokoro soundfile` + `brew install espeak-ng`。
-  - kokoro 没有词边界 → 改为逐字幕块分别合成再拼接：块起始帧因此仍是精确的，但块界断句略生硬（`CHUNK_PAD` 调块间静音）。
-  - 用户有偏好的 TTS（含真人配音 / 声音克隆）：不跑这个脚本，把成品放 `public/assets/<slug>/audio.wav`，自己按逐句/逐块时间轴填 `src/common/timeline.ts` 与 `subs.ts`（格式见文件头），接口一致。
-- 逐句合成 + WordBoundary → 字幕块起止帧；句间 GAP 10 帧、章前 CHAPTER_GAP 45、片头 LEAD 40、片尾 TAIL 90；音量归一到峰值 0.89。
-- 输出：`public/assets/<slug>/audio.wav`、`src/common/timeline.ts`（TOTAL_FRAMES / CHAPTER_STARTS / SENTENCES）、`src/common/subs.ts`、`script/timeline.json|md`。
-- 逐句缓存 `audio/cache/`，改一句只重合成一句。**分镜/构建开始后不要再改词**：所有帧号会变、构建组代码硬编码帧号。
-- 校验：字幕起点 vs 音频起点误差 ≈1 帧（可用 numpy 读 wav 找 onset 复核）。要换真人/克隆声（如 VoxCPM2 + 强制对齐）也走"逐句合成 + 词级时间戳"这套接口：自己在外面合成好，把成品与逐块帧号填进 `audio.wav` / `timeline.ts` / `subs.ts`。
+## 2. Voiceover (`scripts/tts_build.py`)
+- **Before running it, get confirmation points 2 (script sign-off) and 3 (voice) from SKILL.md.** Ask once whether the user has a preferred TTS. If not, use the default. Do not present a list of options.
+- Engine (`TTS_ENGINE`; default `auto`, which picks based on the narration's language):
+  - `edge`, **the Chinese default**. edge-tts with `VOICE=zh-CN-YunxiNeural RATE=+8%` (male, science-presenter tone). Options: YunjianNeural (energetic), YunyangNeural (news-anchor), XiaoxiaoNeural (female). It provides word-level boundaries, so subtitle beats are the most accurate.
+  - `kokoro`, **the English default**. kokoro-82m runs locally: `KOKORO_VOICE=am_liam KOKORO_LANG=a KOKORO_SPEED=1.0`. This is Liam, a male voice, positioned like the Chinese Yunxi. Requires `pip install kokoro soundfile` and `brew install espeak-ng`.
+  - kokoro has no word boundaries, so each subtitle block is synthesized separately and then concatenated. Block start frames stay exact, but the breaks between blocks sound a little abrupt. Adjust the gap with `CHUNK_PAD`.
+  - If the user has their own TTS (including a real voice actor or a cloned voice), do not run this script. Put the finished file at `public/assets/<slug>/audio.wav` and fill in `src/common/timeline.ts` and `subs.ts` by hand from the sentence and block timings (format in the file header). The interface stays the same.
+- Each sentence is synthesized separately, with WordBoundary timings giving block start and end frames. Gaps: 10 frames between sentences, 45 before chapters (CHAPTER_GAP), 40 for the opening lead (LEAD), 90 for the closing tail (TAIL). Volume is normalized to a peak of 0.89.
+- Outputs: `public/assets/<slug>/audio.wav`, `src/common/timeline.ts` (TOTAL_FRAMES / CHAPTER_STARTS / SENTENCES), `src/common/subs.ts`, `script/timeline.json|md`.
+- Per-sentence cache in `audio/cache/`, so editing one sentence only re-synthesizes that sentence. **Do not change any words once storyboarding or building has started**: every frame number will move, and build groups hard-code them.
+- Checks: subtitle start versus audio onset is accurate to about 1 frame (you can check the onset with numpy on the wav). To use a real or cloned voice (such as VoxCPM2 with forced alignment), follow the same interface: synthesize outside, then put the finished audio and the per-block frame numbers into `audio.wav`, `timeline.ts` and `subs.ts`.
 
-## 2.5 英文片（`config.ts` 的 `lang: 'en'`）
-视觉体系、动效、构图与光的规则全部照用，只有下面这些量按语言换。**开工先把 `src/config.ts` 的 `lang` 改成 `'en'`**（`tts_build.py` 会对不上时打 ⚠），`title.rest` 留空 `''`。
-- **篇幅**（语速：`edge-tts en-US` +0% 实测 2.96 词/秒；**kokoro `am_liam` speed 1.0 实测 2.30 词/秒**（散文 2.25、缩写密集句 1.4–1.8；第四片 2026-09-10 全稿实测），加留白后成片密度 ≈2.1 词/秒 → **kokoro 英文片按 ≈125 词/分钟写**，5 分钟 ≈640 词 / 48 句；下表是 edge-tts 口径，用 kokoro 时把词数乘 0.78）：
+## 2.5 English video (`lang: 'en'` in config.ts)
+The visual system, motion, composition and light rules all stay the same. Only the quantities below change with language. **Set `lang` to `'en'` in `src/config.ts` before starting** (`tts_build.py` prints ⚠ if they don't match). Leave `title.rest` as `''`.
+- **Length** (speaking rate: edge-tts en-US at +0% measured 2.96 words/second. **kokoro `am_liam` at speed 1.0 measured 2.30 words/second** (prose 2.25, dense abbreviation sentences 1.4–1.8; measured on the full script of the fourth video on 2026-09-10). Delivered density with pauses is about 2.1 words/second, so **for kokoro English, write about 125 words per minute**: 5 minutes ≈ 640 words, 48 sentences. The table below is for edge-tts; when using kokoro, multiply the word counts by 0.78):
 
-  | 时长 | 英文词数 | 句 / 镜头数 |
+  | Length | English words | Sentences / shots |
   |---|---|---|
-  | 2–3 分钟 | 280–420 | 24–32 |
-  | 3–5 分钟 | 420–700 | 40–50 |
-  | 5–8 分钟 | 700–1150 | 60–80 |
+  | 2–3 min | 280–420 | 24–32 |
+  | 3–5 min | 420–700 | 40–50 |
+  | 5–8 min | 700–1150 | 60–80 |
 
-- **每句 ≤20 词**（对应中文 ≤35 字），长句用 `|` 切成 2–5 块。`tts_build.py` 会把块去掉首尾空格后**用空格拼回整句**给 TTS，所以 `powerful|but they` 和 `powerful | but they` 等价，不会念成 powerfulbut。
-- **每块字幕 ≤48 字符**（≈7–8 词）。实测：49 字符在 44px 下已经要缩字号，>70 字符会折成两行压进内容区。`tts_build.py` 生成时会逐块体检并列出超预算的块。
-- **术语**：首次出现写全称 + 括号缩写（`retrieval-augmented generation (RAG)`），之后一律用缩写；没有"中文在前英文在后"这条。缩写要能读出来（RAG / HNSW / BM25 读字母）。
-- **章名**（进度条）：槽宽 = 1280 ÷ 章数，24px 下每槽约 25 字符封顶，**≤14 字符最稳**（超了会自动缩到 17px）。章节卡标题 80px 最多约 22 字符，超了自动缩。
-- **章节卡副标 `chapterTech`**：中文片是"中文大字 + 英文小字"的结构；英文片别把标题翻译两遍——写一句更短的 kicker，或直接留空 `''`（留空就不渲染）。
-- **配音**：默认 kokoro `am_liam`；想要词级边界（节拍最准）可以用 `TTS_ENGINE=edge VOICE=en-US-AndrewNeural`（云端）。kokoro 会把 CUDA / NIXL / MIG / DeepGEMM 这类缩写逐字母拼读、把 v5.0 读成 "v five zero"：合成前 dump 音素检查，在 `tts_build.py` 的 `PRONOUNCE` 表里用 `[词](/音标/)` 覆写（只改送 TTS 的文本，字幕不变）。
-- **英文标点**：Noto Sans SC 的弯引号与省略号是 1em 全宽字形，画面上用直引号与三个句点。
-- **排版**：不压窄、居中不预扣基线、宽度兜底，都由 `lang` 自动生效，见 `style-guide.md` §3.1。
-- 英文成片《RAG & Knowledge Bases》见 README 顶部视频（5′02″，kokoro `am_liam` 自然语速，由中文版逐镜头重排帧号而来）；过程文件（分镜、源码、QC）仍只有中文样片的，**视觉标尺看 `examples/rag/frames/`**（图形语言与语言无关）。
+- **At most 20 words per sentence** (the Chinese equivalent is 35 characters). Split longer sentences with `|` into 2–5 blocks. `tts_build.py` strips spaces from each block's ends and rejoins the blocks with spaces before sending to TTS, so `powerful|but they` and `powerful | but they` are equivalent and are not read as "powerfulbut".
+- **At most 48 characters per subtitle block** (about 7–8 words). Measured: 49 characters already forces the type size down at 44px, and over 70 characters wraps onto two lines and pushes into the content area. `tts_build.py` checks each block as it generates and lists any over budget.
+- **Terms:** write the full form with the abbreviation in parentheses on first use (`retrieval-augmented generation (RAG)`), and use the abbreviation after that. There is no "Chinese first, English after" rule in the English video. Abbreviations must be pronounceable (RAG, HNSW, BM25 are read as letters).
+- **Chapter names** (progress bar): each slot is 1280 ÷ number of chapters wide. At 24px, each slot fits about 25 characters, and **14 characters or fewer is safest** (longer ones shrink automatically to 17px). Chapter-card titles at 80px fit about 22 characters, and longer ones shrink automatically.
+- **Chapter-card subtitle `chapterTech`:** a Chinese video uses a large Chinese title with a small English line beneath it. In an English video, do not translate the title twice. Write a shorter kicker sentence, or leave it as `''` (empty means nothing renders).
+- **Voice:** default kokoro `am_liam`. For word-level boundaries (most accurate beats), use `TTS_ENGINE=edge VOICE=en-US-AndrewNeural` (cloud). kokoro reads abbreviations such as CUDA, NIXL, MIG and DeepGEMM letter by letter, and reads v5.0 as "v five zero". Dump the phonemes before synthesis, and override with `[word](/phonemes/)` in the `PRONOUNCE` table in `tts_build.py`. This only changes the text sent to TTS, not the subtitles.
+- **English punctuation:** Noto Sans SC's curly quotes and ellipsis are full-width 1em glyphs, so on screen use straight quotes and three periods.
+- **Layout:** no squeezing, no baseline pre-compensation, and width fallback are all applied automatically by `lang`. See `style-guide.md` §3.1.
+- The English video《RAG & Knowledge Bases》appears in the README (5′02″, kokoro `am_liam` at natural pace, with its frame numbers re-timed shot by shot from the Chinese version). Process files (storyboard, source, QC) exist only for the Chinese sample, so **use `examples/rag/frames/` as the visual benchmark** (the visual language does not depend on language).
 
-## 3. 分镜（`script/storyboard_src.md` → `分镜表.md`）
-令牌：`{S12.from}` `{S12.to}` `{S12.c3}`（第 3 个字幕块起始帧）`{C2}`（第 2 章起始帧）`{TOTAL}`，可带 ±整数：`{S12.from-8}`。`python3 scripts/render_storyboard.py` 填帧号。
-结构（照 `examples/rag/storyboard_src.md`）：
-1. 头部：总帧数、章节帧、衔接规则（镜头区间 = [句 from−8, 末句 to+2]；元素入场对齐字幕块起始帧 −6…+3）。
-2. 常驻层表（覆盖层，主会话负责）：片头、章节卡、HUD 条目区间、流程轨步骤与切换帧、片尾；有轨的章标注"内容主区 y175–620"。
-3. 每组一张表（每章两组，G1–Gn 连续编号），每镜头一行：`| 镜头 | 帧 | 节拍（字幕块起始帧） | 画面 | 动效 | 主角·尺寸 | 光 |`。画面写元素、位置（坐标参考值）、颜色语义；动效写入场方式 + 对齐哪个节拍 + 离场方式 + **运镜**（每章 ≥3 次：推近 / 承接位移 / 整组平移 / 视差，见 motion-vocabulary.md §镜头运动）+ **末尾一句「持续：…」**（这个字幕块的动词在画面上持续到下一拍的那个动作：数据流 / 脉冲光点沿箭头跑 / 逐行打字 / 逐格点亮 / 生长 / 闸门开合 / 队列压紧；没有其它运镜的镜头写「持续：1.0→1.05 慢推」，规则见 `composition-and-light.md` §7）；**主角·尺寸**写这一镜头唯一的主角和它的高度（图形 ≥170px 或大字 ≥96px，第 1–2 个节拍入场）；**光**写主角带什么光、当前重点是哪一枚（规则见 `composition-and-light.md`，反例见 `examples/contrast/`）；**"glitch"只写在该镜头的一个重点词上**，其余写"淡入/滑入/缩放"。
-4. 全局约束：示例语境（问句/答复/来源文案原文）、事实清单（画面允许出现的数字/英文）、闪烁白名单（每镜头的重点词）、复用图元清单、**高光时刻清单**（每章 1–2 个镜头：章论点 / 主角登场 / 收尾 payoff，各标登场型 / 大数字型 / 象征物型，按 `composition-and-light.md` §3 编排，≥90 帧）、**运镜清单**（每章 ≥3 处，写在哪个镜头哪个节拍、哪一种）、**§9 持续动作**（照抄 `composition-and-light.md` §7 的三条规则与量化判据：入场后不许完全静止 >30 帧、每镜头静止帧 ≤40%、最长静止 ≤1 s，构建组用 `scripts/motion_check.py <Gn>` 自测）。
+## 3. Storyboard (`script/storyboard_src.md` → `分镜表.md`, "storyboard table")
+Tokens: `{S12.from}` `{S12.to}` `{S12.c3}` (start frame of the third subtitle block), `{C2}` (start frame of chapter 2), `{TOTAL}`. They can take an offset, such as `{S12.from-8}`. `python3 scripts/render_storyboard.py` fills in the frame numbers.
+Structure (follow `examples/rag/storyboard_src.md`):
+1. Header: total frame count, chapter frames, and the continuity rule (a shot's range is [sentence from−8, last sentence to+2]; element entry aligns to −6…+3 of the subtitle block start).
+2. Always-on layer table (the main session owns it): opening, chapter cards, HUD item ranges, flow-track steps and switch frames, closing. Chapters with a track are marked "content area y175–620".
+   **The check scripts match these literal strings, so keep them exactly as written** (they are Chinese labels, and the rest of the file can be in English): the group heading `## Gn（…）`, the allow-list line `**闪烁白名单…**：… 。**不在表内…`, and the fact-list item `1. **事实清单…**`. `selfcheck.py`, `motion_check.py` and `frame_metrics.py` depend on them.
+3. One table per group (two groups per chapter, numbered G1–Gn in sequence). Each shot gets one row: `| shot | frames | beat (subtitle block start frame) | visual | motion | protagonist·size | light |`. The visual column gives elements, positions (reference coordinates) and color meanings. The motion column gives the entry method, the beat it aligns to, the exit method, the **camera move** (at least 3 per chapter: push-in, carry-shift, group pan, parallax; see motion-vocabulary.md, camera moves), and at the end of the cell **a line starting "Continues:"**, naming the action that carries the subtitle block's verb until the next beat (data flowing, a light pulse running along an arrow, typing line by line, lighting cells one by one, growing, a gate opening or closing, a queue compressing). A shot with no other camera move writes "Continues: 1.0→1.05 slow push-in" (rules in composition-and-light.md §7). The **protagonist·size** column gives the one protagonist of the shot and its height (graphic ≥170px or large type ≥96px, entering on beat 1 or 2). The **light** column says what light the protagonist carries and which item is the current focus (see composition-and-light.md; counter-examples in `examples/contrast/`). **"glitch" appears only on one key term of the shot.** Everything else says "fade in", "slide in" or "scale in".
+4. Global constraints: the example scenario (exact question, answer and source text), the fact list (numbers and English words allowed on screen), the glitch allow-list (the key term per shot), the reusable graphics list, the **highlight moment list** (one or two shots per chapter: chapter claim, protagonist introduction, closing payoff; each tagged entrance, large-number or symbol type; follows composition-and-light.md §3 and at least 90 frames), the **camera-move list** (at least 3 per chapter, with the shot and beat, and the kind of move), and **§9 continuous motion** (copy the three rules and measurement criteria from composition-and-light.md §7: no element completely still for more than 30 frames after entering, each shot's still share ≤40%, longest still ≤1 s. Build agents self-check with `scripts/motion_check.py <Gn>`).
 
-## 4. 镜头设计模式（按概念类型选；**构建组必须读本组用到的每种模式对应的 shots_src 源码**，路径相对 `examples/rag/shots_src/`）
-| 概念类型 | 画法 | 主角 · 尺寸 · 光 | 样片例 / 源码 |
+## 4. Shot design patterns (choose by concept type; **build agents must read the shots_src source for each pattern their group uses**, with paths relative to `examples/rag/shots_src/`)
+| Concept type | Drawing approach | Protagonist · size · light | Sample / source |
 |---|---|---|---|
-| 主体 + 若干短板/特性 | 左主体图标 + 右侧编号虚线框逐个填充 | `LLMIcon` 110 + 双层紫光呼吸；虚线框是配角 | SC01–04 · `G1/SC01.tsx`…`SC04.tsx`、`G1/layout.tsx`（LLMBlock / Sparkle） |
-| 类比 | 具象物（考卷 / 书）+ 大字标签 | 考卷 300×380 或书 260 宽；标签 Pill 紫是唯一重点光 | SC06、SC42 · `G2/SC06.tsx`、`G8/SC42.tsx`、`G2/parts.tsx`（ExamPaper / BookIcon） |
-| **主角登场（高光时刻·登场型）** | 清场 → 三轮 `LightSweep` → `StageLine` → `GhostText` 预示 → 白闪 + 宽体大字 `GlitchIn`（rgbSplit）→ 脉冲 → 副标 slideUp → 拆词 Pill SoftIn | Audiowide 150 + 紫硬投影；全流程 ≥90 帧（`fx.tsx` `SET_PIECE`） | SC08、SC35 · `G2/SC08.tsx`、`G7/SC35.tsx` |
-| 出处 | 论文卡（Times 标题 + 作者会议）+ 大年份计数 | 论文卡 ≥240 宽是主角；年份 `BigNumber` 96 不单独站空屏 | SC09 · `G2/SC09.tsx` |
-| 流水线步骤 | 顶部流程轨当前步紫 + 主区「输入 → 处理器盒 → 输出」三段 + 箭头 draw-on | 处理器盒 ≥200×110 紫填充白边（主角）；输入输出 60–110 | SC12、SC16 · `G3/SC12.tsx`、`G4/SC16.tsx` |
-| 切分/粒度取舍 | 三栏对比：太大 / 常见 / 太小，红叉绿勾 | 中栏标准卡 active 紫光是主角 | SC14 · `G3/SC14.tsx` |
-| 向量/嵌入空间 | 网格平面 + 灰点云 + 紫点邻居圈 + 橙查询点 | 平面 800×410；查询点 `GLOW_ORANGE`；可配一次推近 | SC17、SC23 · `G4/SC17.tsx`、`G5/SC23.tsx`、`G4/vspace.ts` |
-| 索引/结构（纵深） | 分层倾斜平面 + 路径跳转 draw-on + 计数 | `TiltPlane` ×3 层距 90，最上层白、下层 α .6 | SC18 · `G4/SC18.tsx` |
-| 存储/权限 | 圆柱 + 卡片飞入 + 标签 + 用户图标勾叉 | `DBIcon` ≥160 高 + 顶面紫 accent | SC19 · `G4/SC19.tsx` |
-| 两路融合 | 左右两列结果 + 中央公式 + 弧线汇入 | 公式结果项 ≥72px 白光是主角 | SC25 · `G5/SC25.tsx` |
-| 筛选/排序 | 漏斗 `Trap` 层 + 卡片穿过变灰落下，Top-k 变紫 | Trap 顶宽 ≥600、当前层紫 | SC26 · `G6/SC26.tsx` |
-| 研究发现 | 曲线图卡（U 形）+ 出处灰小字（≥2.5 s 停留） | 图表卡 440×300；重点红点带光；讲到重点时推近 1.2 | SC28 · `G6/SC28.tsx` |
-| 提示词/输出 | 提示词卡逐条打字机 + 中央 LLM + 答复卡带引用角标 → 引线到来源卡 | `LLMIcon` 110 带光是主角 | SC29–30 · `G6/SC29.tsx`、`G6/SC30.tsx` |
-| 评估指标 | 左右虚线框各一列双语 Pill + 框架名 Pill | 框架名 Pill 紫 + `GLOW_PURPLE_S` 是唯一光 | SC33 · `G7/SC33.tsx` |
-| 取舍/权衡 | 天平（梁倾斜 easeOut）或 ≈ 号对照 | 天平 ≥400 宽 | SC34、SC27 · `G7/SC34.tsx`、`G6/SC27.tsx` |
-| 图谱 | 节点 rnd 亮起 + 边 draw-on + 社区圆 + 摘要卡 | `GradBall` 节点；社区圆紫光 | SC36 · `G7/SC36.tsx` |
-| 循环/智能体 | 环形节点 + 小球跑圈 + 轮次计数 + 出口分支 | 环 ≥300 直径 | SC37 · `G7/SC37.tsx` |
-| **量级/阈值（高光时刻·大数字型）** | `BigNumber` 20 帧计数 + 单位 + 对照物 + 橙色问号/结论 `GlitchIn` | Orbitron 110 紫硬投影 | SC39–41 · `G8/SC39.tsx`、`G8/SC40.tsx`、`G8/SC41.tsx` |
-| **收尾（高光时刻·象征物型）** | 回到比喻 + 象征物 slideUp Δ≤170 + `HaloRing` draw-on + 结论大字紫描边 `GlitchIn` | 象征物 ≥260 高 | SC43–44 · `G8/SC43.tsx`、`G8/SC44.tsx` |
-| 时间轴 / 放慢（样片无） | 轴 + 游标，**必须配主角**：大数字（「0.1 秒」`BigNumber` 96）或放大的当前刻度；游标 `GLOW_PURPLE_S`；放慢用一次推近表现 | 大数字 96 | 反例 `examples/contrast/03_*` |
-| 公式 | 逐 token 出现（每 3 帧）；变量用小胶囊，**结果项 ≥72px 橙/白光** | 结果项 72 | `G5/SC25.tsx`；反例 `examples/contrast/04_*` |
-| 表格 / 榜单 | 当前行放大 1.15 + 紫光，其余灰；行高 ≥54；表外配一个大数字或图标主角；行数 >6 用整页滚动 | 当前行是主角 | 反例 `examples/contrast/04_*` |
-| 很多 / 世界很大 | 2–3 层视差墙（截图墙 / 文档墙 / 日志流），背景层压暗 ×0.43，前景层 12.8 px/帧 | 视差是运镜不是碎屑 | 原片 seg_02（推荐系统 App 截图墙） |
+| Subject with several shortcomings or traits | Icon of the subject on the left, with numbered dashed boxes filling one by one on the right | `LLMIcon` at 110, with a double purple glow that breathes. The dashed boxes are supporting elements. | SC01–04 · `G1/SC01.tsx` to `SC04.tsx`, `G1/layout.tsx` (LLMBlock / Sparkle) |
+| Analogy | A concrete object (exam paper, book) with a large label | Exam paper 300×380, or book 260 wide. The purple label Pill is the only focus light. | SC06, SC42 · `G2/SC06.tsx`, `G8/SC42.tsx`, `G2/parts.tsx` (ExamPaper / BookIcon) |
+| **Protagonist introduction (highlight moment, entrance type)** | Clear the scene → three rounds of `LightSweep` → `StageLine` → `GhostText` preview → white flash and wide large-type `GlitchIn` (rgbSplit) → pulse → subtitle slideUp → word-by-word Pills with SoftIn | Audiowide at 150 with purple hard shadow. The whole sequence is at least 90 frames (`SET_PIECE` in `fx.tsx`). | SC08, SC35 · `G2/SC08.tsx`, `G7/SC35.tsx` |
+| Source (citation) | Paper card (Times title, authors and venue) plus a large year counting up | Paper card at least 240 wide is the protagonist. The year is a `BigNumber` at 96, never standing alone on an empty screen. | SC09 · `G2/SC09.tsx` |
+| Pipeline steps | Purple current step on the top flow track, plus a three-part "input → processor box → output" in the main area, with arrow draw-on | Processor box at least 200×110, purple fill with white border (protagonist). Input and output 60–110. | SC12, SC16 · `G3/SC12.tsx`, `G4/SC16.tsx` |
+| Chunking and granularity trade-offs | Three-column comparison: too large, typical, too small, with red crosses and green checks | The middle standard card, with its active purple light, is the protagonist. | SC14 · `G3/SC14.tsx` |
+| Vector or embedding space | Grid plane plus grey point cloud, purple neighbor circle, orange query point | Plane 800×410. The query point uses `GLOW_ORANGE`. One push-in can be added. | SC17, SC23 · `G4/SC17.tsx`, `G5/SC23.tsx`, `G4/vspace.ts` |
+| Index or structure (depth) | Stacked tilted planes, a path that jumps between layers with draw-on, counting | `TiltPlane` in three layers spaced 90, top layer white, lower layers at α .6 | SC18 · `G4/SC18.tsx` |
+| Storage or permissions | Cylinder, cards flying in, labels, user icon with check or cross | `DBIcon` at least 160 tall with a purple top accent | SC19 · `G4/SC19.tsx` |
+| Two-path fusion | Two result columns left and right, a central formula, arcs converging in | Formula result item at least 72px with white light is the protagonist | SC25 · `G5/SC25.tsx` |
+| Filtering or ranking | Funnel `Trap` layers, cards passing through and falling grey, top-k turns purple | Trap top width at least 600, current layer purple | SC26 · `G6/SC26.tsx` |
+| Research finding | Curve chart card (U-shape) plus a small grey citation (held for at least 2.5 s) | Chart card 440×300. Highlighted point is red with light. Push in to 1.2 when discussing the key point. | SC28 · `G6/SC28.tsx` |
+| Prompt and output | Prompt card typed out line by line, a central LLM, an answer card with citation marker, a leader line to the source card | `LLMIcon` at 110 with light is the protagonist | SC29–30 · `G6/SC29.tsx`, `G6/SC30.tsx` |
+| Evaluation metrics | Left and right dashed boxes, each with a column of bilingual Pills, plus a framework-name Pill | The purple framework-name Pill with `GLOW_PURPLE_S` is the only light | SC33 · `G7/SC33.tsx` |
+| Trade-offs | Balance scale (beam tilts with easeOut) or an ≈ sign comparison | Scale at least 400 wide | SC34, SC27 · `G7/SC34.tsx`, `G6/SC27.tsx` |
+| Graph | Nodes light up at random, edges draw on, community circles, summary card | `GradBall` nodes. Community circles with purple light. | SC36 · `G7/SC36.tsx` |
+| Loop or agent | Ring of nodes, a ball running around it, round counter, exit branches | Ring at least 300 in diameter | SC37 · `G7/SC37.tsx` |
+| **Magnitude or threshold (highlight moment, large-number type)** | `BigNumber` counting over 20 frames, plus a unit, a comparison object, and an orange question mark or conclusion with `GlitchIn` | Orbitron at 110 with purple hard shadow | SC39–41 · `G8/SC39.tsx`, `G8/SC40.tsx`, `G8/SC41.tsx` |
+| **Closing (highlight moment, symbol type)** | Back to the analogy, with a symbol that slides up Δ≤170, a `HaloRing` draw-on, and a conclusion in large type with purple outline and `GlitchIn` | Symbol at least 260 tall | SC43–44 · `G8/SC43.tsx`, `G8/SC44.tsx` |
+| Timeline or slow-motion (not in sample) | An axis plus a playhead. **Must be paired with a protagonist:** a large number (such as "0.1 seconds" with `BigNumber` at 96), or the current tick enlarged. The playhead uses `GLOW_PURPLE_S`. Slow motion is shown with a push-in. | Large number at 96 | Counter-example `examples/contrast/03_*` |
+| Formula | Tokens appear one at a time (every 3 frames). Variables use small capsules, and **the result item is at least 72px in orange or white light** | Result item at 72 | `G5/SC25.tsx`. Counter-example `examples/contrast/04_*` |
+| Table or ranking | Current row enlarged to 1.15 with purple light, others grey. Row height at least 54. Pair the table with a large number or icon as the protagonist. More than 6 rows use a full-page scroll. | Current row is the protagonist | Counter-example `examples/contrast/04_*` |
+| Lots of things, a very large world | 2–3 layers of parallax walls (screenshot wall, document wall, log stream). The background layer is dimmed ×0.43, the foreground layer moves at 12.8 px/frame. | Parallax is a camera move, not debris | Original clip seg_02 (recommendation-app screenshot wall) |

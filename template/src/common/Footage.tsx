@@ -3,20 +3,20 @@ import {AbsoluteFill, OffthreadVideo, Sequence, staticFile, useCurrentFrame} fro
 import {W, H, keyframes, DirBlur} from './lib';
 
 /**
- * 实拍/B-roll 层（可选）。素材只能来自 public/assets/<slug>/（免版权来源如 Mixkit，登记 MANIFEST.md：sha256 / 来源 URL / 许可 / 用途）。
- * spec.from/to 为成片帧号；zoom/pan/blur/opacity 关键帧 t 为成片帧号。
+ * Live-footage / B-roll layer (optional). Assets may only come from public/assets/<slug>/ (royalty-free sources such as Mixkit, logged in MANIFEST.md with sha256, source URL, license and use).
+ * spec.from/to are final-cut frame numbers. The zoom/pan/blur/opacity keyframe t values are also final-cut frame numbers.
  */
 export type FootageSpec = {
   from: number; to: number;
-  src: string; // 相对 public/
-  srcFrom: number; // 素材起始帧（30fps，0 起）
+  src: string; // relative to public/
+  srcFrom: number; // starting frame of the source clip (30 fps, starting at 0)
   zoomKf?: Array<[number, number]>; panKf?: Array<[number, number]>; panYKf?: Array<[number, number]>;
   blurKf?: Array<[number, number]>; focusKf?: Array<[number, number]>; opacityKf?: Array<[number, number]>;
   originX?: number; originY?: number; flipX?: boolean;
   grade?: 'dark' | 'none';
   filter?: string;
 };
-/** 低照暖调 + 暗角（让实拍融入黑底星空） */
+/** Low-light warm grade + vignette (so live footage blends into the black star field) */
 export const DarkGrade: React.FC = () => (
   <>
     <AbsoluteFill style={{background: 'linear-gradient(180deg, rgba(40,30,20,0.25), rgba(10,8,6,0.35))', mixBlendMode: 'multiply', pointerEvents: 'none'}} />

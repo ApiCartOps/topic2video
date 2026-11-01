@@ -1,105 +1,107 @@
-# 风格指南（视觉体系）
+# Style guide (visual system)
 
-一句话：**黑底幕底（星点 + 底部雾底渐变，或点阵波）**上的白线条 MG。所有图形是「黑填充 + 白描边 2–3px」或「紫/橙纯色块 + 白描边」；中文超粗黑体（Noto Sans SC 900，常 scaleX .8–.85 压窄）；英文技术词紫色粗斜体 Exo 2；常驻顶部紫胶囊 HUD、底部 44px 白字黑边字幕、半透明章节进度条。参考帧：`examples/rag/frames/ref_*.jpg`（先看再画）。
+In one line: **a black backdrop (stars plus a fog gradient at the bottom, or a dot wave)** with white line-art motion graphics. Every shape is either "black fill with a 2–3px white outline" or "solid purple or orange fill with a white outline". Chinese titles use extra-bold Noto Sans SC 900, often squeezed with scaleX .8–.85. English technical terms use bold italic purple Exo 2. A purple HUD capsule sits at the top, 44px white subtitles with black outlines sit at the bottom, and a semi-transparent chapter progress bar runs along the bottom edge. Reference frames: `examples/rag/frames/ref_*.jpg` (look at them before drawing anything).
 
-## 1. 画布与安全区（1280×720@30fps）
-| 区域 | 像素 | 说明 |
+## 1. Canvas and safe area (1280×720 at 30 fps)
+| Area | Pixels | Notes |
 |---|---|---|
-| 黑底 | 全幅 #000 | Main 唯一的不透明黑底；镜头组件**不要**再画不透明黑底 |
-| 雾底 Fog | y415→687 线性 #000→#212121，687→720 恒 #212121 | 全片常驻（`common/Fog.tsx`） |
-| 星点 StarField | 出生区 0–687，80 颗 2–4px，亮度 35–255 偏暗，漂移 0.4–3.2px/帧，寿命 60–200 帧，逐帧 ±30% 闪烁 | 确定性纯函数（`common/StarField.tsx`）；`BG_Gn` 可按帧区间关掉 `{fog:false, stars:'none'}` |
-| 点阵波 DotFieldBg（可选，替代 雾底 + 星点） | 设计坐标 960×540 等比放大：点距 48px、半径 2–2.7px、底色 #0b0c11、点色 #cfe0ff，透明度 (0.2 + 0.6k²)×径向边缘衰减，斜向波前约 9.3 s 扫过一遍，叠 .06 静态噪点抗色带 | video-talkcraft `motion-systems/backdrop.tsx` 的 dot-field-wave 移植（`common/DotFieldBg.tsx`）；`config.bg = 'dots'` 启用，与星点雾底互斥；`BG_Gn` 的 `stars:'none'` 同样关掉它；屏幕空间静态纹理，不跟运镜；`frame_metrics.py` 按同一网格把点抠掉再统计 |
-| 顶部 HUD 胶囊 | (533,28,216,51) r25.5，紫 #6630F8 填充 + 白 2px 边，33px 700 白字；英文副标 Exo 2 30px 紫在 y≈94 | 覆盖层绘制；换词 8 帧淡入 |
-| 流程轨（可选） | 胶囊 top 118 高 44 宽 150，中心 x 240/440/640/840/1040，间小箭头 | 当前步紫、已过 #2A2A2A 底白字、未到黑底灰边灰字 |
-| **内容主区** | 无轨的章 y110–620；有轨的章 y175–620；x60–1220 | 关键信息只放这里 |
-| 字幕带 | CSS top 637，墨迹 y644–684，44px Noto 700 白 + 4px 黑描边（16+8+4 向 text-shadow 环）居中 | **不放任何内容**；入场轨迹不得穿过 |
-| 进度条 | y687–720 半透明：已播 rgba(190,170,250,.52)、未播 rgba(243,243,243,.32)；n−1 根白分隔线；章名 Noto 900 24px skewX(−10°) scaleY(.9)，当前章 α1 其余 .55 | 内容穿过会被提亮，只允许全幅背景/大图形穿过 |
-| z 序 | 黑底 < 幕底（Fog + 星点，或 DotFieldBg）< 实拍 < 覆盖层 < 镜头 < 片尾压黑 < 进度条 < aboveBar 镜头 < 字幕 | |
+| Black base | full frame #000 | The only opaque black in Main. Shot components **must not** draw their own opaque black background. |
+| Fog | y415→687 linear #000→#212121, 687→720 fixed #212121 | Always on across the video (`common/Fog.tsx`). |
+| StarField | spawn zone 0–687, 80 stars of 2–4px, brightness 35–255 (dim), drift 0.4–3.2px/frame, lifetime 60–200 frames, ±30% flicker per frame | Deterministic pure function (`common/StarField.tsx`). `BG_Gn` can turn it off for a frame range with `{fog:false, stars:'none'}`. |
+| DotFieldBg (optional, replaces fog and stars) | Scaled from a 960×540 design coordinate: dot spacing 48px, radius 2–2.7px, base color #0b0c11, dot color #cfe0ff, opacity (0.2 + 0.6k²) × radial edge falloff. A diagonal wavefront sweeps across in about 9.3 s. A static .06 noise layer prevents color banding. | Port of the dot-field-wave from video-talkcraft `motion-systems/backdrop.tsx` (`common/DotFieldBg.tsx`). Enable with `config.bg = 'dots'`. It is mutually exclusive with the star-and-fog backdrop. `stars:'none'` in `BG_Gn` also turns it off. It is a screen-space static texture that does not follow camera moves. `frame_metrics.py` removes the dots on the same grid before measuring. |
+| Top HUD capsule | (533,28,216,51) r25.5, purple #6630F8 fill with a 2px white border, 33px 700 white text. English subtitle in Exo 2 30px purple at about y≈94. | Drawn by the overlay. Text changes fade in over 8 frames. |
+| Flow track (optional) | Capsules top 118, height 44, width 150, centers at x 240/440/640/840/1040, with small arrows between | Current step purple. Completed steps #2A2A2A with white text. Upcoming steps black with grey border and grey text. |
+| **Content area** | No track: y110–620. With track: y175–620. x60–1220. | Key information goes only here. |
+| Subtitle band | CSS top 637, ink y644–684, 44px Noto 700 white with a 4px black outline (16+8+4 text-shadow ring), centered | **No content here.** Entry paths must not cross it. |
+| Progress bar | y687–720, semi-transparent. Played: rgba(190,170,250,.52). Unplayed: rgba(243,243,243,.32). White dividers at n−1. Chapter names in Noto 900 24px, skewX(−10°) scaleY(.9). The current chapter is at α1, the others at .55. | Content crossing it is brightened. Only full-width backgrounds and large shapes may cross it. |
+| Stacking | black base < backdrop (fog + stars, or DotFieldBg) < live footage < overlay < shots < ending blackout < progress bar < aboveBar shots < subtitles | |
 
-## 2. 调色板（`src/ui.tsx` 常量）
-| 名 | 值 | 语义 |
+## 2. Palette (constants in `src/ui.tsx`)
+| Name | Value | Meaning |
 |---|---|---|
-| PURPLE | #6630F8 (102,48,248) | 当前重点 / 激活 / 品牌；胶囊、盒、当前步 |
-| PURPLE_LIGHT | #A175F1 | 高光端、穿过进度条后的紫、active 卡边 |
-| PURPLE_TECH | #6530F4 | Exo 2 英文技术词 |
-| PURPLE_DEEP | #5A3AD5 | 曲线、标题硬投影 |
-| ORANGE / CORAL | #F05F41 / #F16043 | 指标数字、警示、"另一方"、查询点 |
-| RED_DEEP | #EC081F + 双层红柔光 | 深红警示块（幻觉/不靠谱） |
-| GREEN | #8FF740 | 绿勾（正确） |
-| GREY / GREY_MID / GREY_LINE / GREY_LIGHT | #A0A0A1 / #747474 / #4A4A4A / #D4D4D4 | 非重点文字 / 灰块 / 网格线 / 文本线条 |
-| WHITE / 黑 | #FFF / #000 | 文字、描边、箭头 / 填充 |
-| MAGENTA / CYAN | #D100D6 / #58FFEE | 只出现在 glitch RGB 错位副本 |
-| 柔光 | GLOW_PURPLE（12px/42px 双层）、GLOW_PURPLE_S（24px 8px）、GLOW_ORANGE、GLOW_RED、BLOOM（drop-shadow 3px 白 .5）、TEXT_GLOW | |
-**颜色即语义**：紫=重点/我们的、灰=未激活/背景、橙红=指标/警示/对方、白=结构文字、绿=正确。一帧里紫色重点不超过一处大面积。
+| PURPLE | #6630F8 (102,48,248) | Current focus, active state, brand color. Used on capsules, boxes, the current step. |
+| PURPLE_LIGHT | #A175F1 | Highlight end, purple after crossing the progress bar, active card border. |
+| PURPLE_TECH | #6530F4 | English technical terms in Exo 2. |
+| PURPLE_DEEP | #5A3AD5 | Curves and hard shadows on titles. |
+| ORANGE / CORAL | #F05F41 / #F16043 | Metric numbers, warnings, "the other side", query points. |
+| RED_DEEP | #EC081F with a double red glow | Deep red warning blocks (hallucination, unreliable). |
+| GREEN | #8FF740 | Green check (correct). |
+| GREY / GREY_MID / GREY_LINE / GREY_LIGHT | #A0A0A1 / #747474 / #4A4A4A / #D4D4D4 | Non-focus text / grey blocks / grid lines / text lines. |
+| WHITE / black | #FFF / #000 | Text, outlines, arrows / fills. |
+| MAGENTA / CYAN | #D100D6 / #58FFEE | Only in the RGB-shifted copies of glitch. |
+| Glows | GLOW_PURPLE (12px and 42px double layer), GLOW_PURPLE_S (24px, 8px), GLOW_ORANGE, GLOW_RED, BLOOM (drop-shadow 3px white .5), TEXT_GLOW | |
 
-## 3. 字体（`public/fonts`，全部 OFL；`common/lib.tsx` 的 `Fonts` 在 Main 挂一次）
-| 角色 | 族 | 字号/字重/变形 |
+**Color means meaning:** purple = focus or ours, grey = inactive or background, orange-red = metric or warning or the opposing side, white = structural text, green = correct. Keep at most one large purple area in a frame.
+
+## 3. Fonts (`public/fonts`, all OFL; `Fonts` in `common/lib.tsx` loads once in Main)
+| Role | Family | Size, weight, transform |
 |---|---|---|
-| 大标题（片名、章节卡、镜头重点词） | Noto Sans SC | 56–96px / 900 / scaleX .85，可加 1px 黑描边 paintOrder stroke |
-| HUD 胶囊字 | Noto Sans SC | 33px / 700 / letterSpacing 1 |
-| 胶囊/标签 | Noto Sans SC | 24–30px / 600–800 / textDy −2（CJK 墨迹偏低 3–7px 要预扣） |
-| 图内说明 | Noto Sans SC | 22–26px / 500–600 / 灰或白；**最小 22px** |
-| 字幕 | Noto Sans SC | 44px / 700 / 无压缩 |
-| 英文技术词 | Exo 2 Italic | 26–38px / 600–700 / scaleX .8 / 紫；TechText 组件 |
-| 宽体展示字（片名缩写、大写词） | Audiowide | 96–150px / 字距 6 / 白 + 紫硬投影 6px |
-| 数字/章序号/计数 | Orbitron | 24–110px / 700 / tabular-nums |
-| 公式 | Times New Roman Italic | 34–36px 白 + drop-shadow 3px |
-| 代码/向量数字 | 等宽 FONT_MONO | 22–24px |
+| Large titles (video title, chapter cards, key term in a shot) | Noto Sans SC | 56–96px, 900, scaleX .85. May add a 1px black outline with paintOrder stroke. |
+| HUD capsule text | Noto Sans SC | 33px, 700, letter-spacing 1 |
+| Capsules and labels | Noto Sans SC | 24–30px, 600–800, textDy −2 (CJK ink sits 3–7px low, so pre-compensate) |
+| In-figure notes | Noto Sans SC | 22–26px, 500–600, grey or white. **Minimum 22px.** |
+| Subtitles | Noto Sans SC | 44px, 700, no compression |
+| English technical terms | Exo 2 Italic | 26–38px, 600–700, scaleX .8, purple. TechText component. |
+| Wide display type (title abbreviations, capitalized words) | Audiowide | 96–150px, letter-spacing 6, white with a 6px purple hard shadow |
+| Numbers, chapter numerals, counters | Orbitron | 24–110px, 700, tabular-nums |
+| Formulas | Times New Roman Italic | 34–36px white with a 3px drop shadow |
+| Code and vector numbers | Monospace FONT_MONO | 22–24px |
 
-### 3.1 英文片（`config.ts` 的 `lang: 'en'`）
-Noto Sans SC 自带完整拉丁字形（实测 wght 100–900 全覆盖），所以**不需要再加字体**：正文、标签、字幕仍用 `FONT_HEAVY`，展示大字用 Audiowide / Orbitron。三条差异由 `lang` 自动生效，别在镜头里手写死值：
-- **不压窄**：`SQUEEZE`（`common/lib.tsx`）中文 .85 / 英文 1。拉丁字母 scaleX .85 会明显变形。片头、章节卡已经用它。
-- **基线不预扣**：`CText` 的 `dy` 默认取 `TEXT_DY`（中文 −2 / 英文 0）——CJK 行盒的墨迹偏低，拉丁不偏。
-- **宽度兜底**：字幕、进度条章名、章节卡标题、片头大字都过 `fitSize()`（`common/textfit.ts`，按实测 em 宽估算，纯函数所以渲染确定）。它只是兜底：超预算说明文案该切，见 `narration-storyboard.md` §5。
-- 英文片里 `TechText`（Exo 2 紫斜体）只用于**术语强调**，不要整句用——整段斜体在英文里读起来像引文。
-- 一行英文大写词比中文占宽得多：Audiowide 大写平均 .79em、Orbitron .82em、Noto 大写 .67em / 小写 .57em（fontTools 实测）。估宽用 `textW(s, size, EM_WIDE|EM_ORB|EM_TECH, letterSpacing)`；带 `letterSpacing` 的大字（片头、章节卡）要把它传进去——它是固定 px、不随字号缩，`fitSize()` 同样有这个参数。
+### 3.1 English video (`lang: 'en'` in config.ts)
+Noto Sans SC already includes the full Latin character set (verified across weights 100–900), so **no extra font is needed**. Body text, labels and subtitles still use `FONT_HEAVY`. Large display type uses Audiowide or Orbitron. Three differences take effect automatically when `lang` is set, so do not hard-code values in shots:
+- **No squeezing:** `SQUEEZE` (`common/lib.tsx`) is .85 for Chinese and 1 for English. Latin letters at scaleX .85 look visibly distorted. The opening and chapter cards already use it.
+- **No baseline pre-compensation:** `CText` defaults `dy` to `TEXT_DY` (−2 for Chinese, 0 for English). CJK line boxes place ink low, while Latin does not.
+- **Width fallback:** subtitles, progress-bar chapter names, chapter-card titles and the large opening text all pass through `fitSize()` (`common/textfit.ts`, which estimates from measured em widths and is a pure function, so rendering stays deterministic). It is only a fallback. If text goes over budget, the copy should be split. See `narration-storyboard.md` §5.
+- In an English video, `TechText` (Exo 2 purple italic) is for **emphasizing a term only**. Do not set whole sentences in it, because a fully italic sentence reads like a quotation.
+- English capitalized words are much wider than Chinese: Audiowide capitals average .79em, Orbitron .82em, Noto capitals .67em and lowercase .57em (measured with fontTools). Estimate width with `textW(s, size, EM_WIDE|EM_ORB|EM_TECH, letterSpacing)`. Large type with `letterSpacing` (the opening, chapter cards) must pass that value in, because it is a fixed px amount that does not scale with font size. `fitSize()` takes the same parameter.
 
-## 4. 图元目录（`src/ui.tsx`，镜头 `import {…} from '../../ui'`）
-| 组件 | 用途 | 关键 props |
+## 4. Component catalog (`src/ui.tsx`, imported in shots as `import {…} from '../../ui'`)
+| Component | Use | Key props |
 |---|---|---|
-| `CText` | 墨迹中心定位单行文字 | cx cy size weight color scaleX dy italic shadow |
-| `TechText` | Exo 2 紫斜体英文 | cx cy text fontSize scaleX glow |
-| `MonoText` | 等宽多行 | x y size |
-| `Box` | 黑底白边矩形（fill 可渐变；dashed；glow） | x y w h r sw |
-| `Pill` | 全圆角胶囊 + 居中文字 | Box props + text fontSize weight textDy |
-| `TagBlock` | 大标签色块（紫/橙/深红）+ 900 字 scaleX .8 + 同色外发光 | x y w h color text |
-| `Svg` | 全幅 1280×720 SVG 容器（默认 BLOOM） | children |
-| `LineArrow` | 任意方向箭头，p 自根部长出 | x0 y0 x1 y1 p rodW headL headW dashed |
-| `ArrowH` | 水平箭头 div 版（左端锚 scaleX） | x y w p dir |
-| `Check` / `Cross` | 绿勾 / 红叉 draw-on（p≤0 不渲染） | cx cy size p |
-| `DocIcon` | 折角文档 + 文本线条 + 标签 | x y w h lines label accent |
-| `DBIcon` | 数据库圆柱 | cx cy w h label accent |
-| `ChunkCard` | 文本块卡（active 紫边柔光） | x y w h lines active title |
-| `LLMIcon` | 大模型：圆角方块 + 三层神经元点阵 | cx cy size label glow |
-| `Trap` | 倒梯形漏斗层，灰↔紫 k 渐变 | cx y wTop wBot h k text |
-| `TopCapsule` | 顶部 HUD 胶囊（覆盖层用） | N f0 text w tech glitch |
-| `Counter` | tabular 数字 | cx cy value size |
-| `SoftIn` | **默认入场**：8 帧淡入 + 10px 上浮（签名同 GlitchIn） | N f0 children len dy |
-| `GlitchIn`（common） | 12 帧透明度闪烁入场，rgbSplit/slices 变体 | N f0 seq rgbSplit slices |
-| 小工具 | `fadeIn/fadeOut/slideUp/scaleIn/exitAccel/exitFade/stagger/abs` | |
-按主题补图元时放进 `ui.tsx`（如样片补了 DocIcon/DBIcon/ChunkCard/LLMIcon），组内特有的放组目录 `gNui.tsx`。参考实现：`examples/rag/shots_src/*/`。
+| `CText` | Single line of text, positioned by ink center | cx cy size weight color scaleX dy italic shadow |
+| `TechText` | English technical term in Exo 2 purple italic | cx cy text fontSize scaleX glow |
+| `MonoText` | Monospace, multi-line | x y size |
+| `Box` | Black box with white border (fill can be a gradient; dashed; glow) | x y w h r sw |
+| `Pill` | Fully rounded capsule with centered text | Box props plus text fontSize weight textDy |
+| `TagBlock` | Large colored label block (purple, orange, deep red) with 900 text at scaleX .8 and a same-colored outer glow | x y w h color text |
+| `Svg` | Full-frame 1280×720 SVG container (default BLOOM) | children |
+| `LineArrow` | Arrow in any direction; p grows it from the root | x0 y0 x1 y1 p rodW headL headW dashed |
+| `ArrowH` | Horizontal arrow as a div (left end anchored for scaleX) | x y w p dir |
+| `Check` / `Cross` | Green check and red cross, draw-on (no render when p≤0) | cx cy size p |
+| `DocIcon` | Document with folded corner, text lines and label | x y w h lines label accent |
+| `DBIcon` | Database cylinder | cx cy w h label accent |
+| `ChunkCard` | Text-block card (active state has a purple border and glow) | x y w h lines active title |
+| `LLMIcon` | Language model: rounded square with a three-layer neuron dot grid | cx cy size label glow |
+| `Trap` | Inverted trapezoid funnel layer, grey to purple with k gradient | cx y wTop wBot h k text |
+| `TopCapsule` | Top HUD capsule (for the overlay) | N f0 text w tech glitch |
+| `Counter` | Tabular numerals | cx cy value size |
+| `SoftIn` | **Default entry:** 8-frame fade-in plus 10px rise (same signature as GlitchIn) | N f0 children len dy |
+| `GlitchIn` (common) | 12-frame opacity-flicker entry, with rgbSplit and slices variants | N f0 seq rgbSplit slices |
+| Helpers | `fadeIn / fadeOut / slideUp / scaleIn / exitAccel / exitFade / stagger / abs` | |
 
-光效 / 高光时刻 / 纵深 / 运镜图元在 `src/fx.tsx`（`import {…} from '../../fx'`）：
-| 组件 | 用途 |
+When a topic needs new graphics, add them to `ui.tsx` (the sample added DocIcon, DBIcon, ChunkCard and LLMIcon). Anything specific to one group goes in that group's own `gNui.tsx`. Reference implementations: `examples/rag/shots_src/*/`.
+
+Light, highlight-moment, depth and camera primitives are in `src/fx.tsx` (imported as `import {…} from '../../fx'`):
+| Component | Use |
 |---|---|
-| `LightBar` / `LightSweep` | 紫光条横扫（高光时刻开场三轮） |
-| `StageLine` | 中央舞台光线：展宽 → 呼吸 → 节拍帧白闪消失 |
-| `GhostText` / `ghostOpacity` | 主角大字的白描边轮廓 10% 预示 |
-| `HaloRing` | 主体脚下紫色光环，可分 back / front 夹住主体 |
-| `HeroGlow` | 任意矩形主角的双层紫柔光 + 30 帧呼吸 |
-| `BigNumber` / `countTo` | Orbitron 大数字 + 紫硬投影 + 计数 |
-| `Sparkle` / `GradBall` | 四角小星 / 顶亮底黑小球 |
-| `TiltPlane` | 倾斜平面（纵深层） |
-| `CameraRig` / `camAt` | 定点推近 / 拉远 / 平移 / 整页滚动 / 承接位移 |
-| `SET_PIECE` / `setPiece` | 登场型高光时刻的标准相对帧 |
+| `LightBar` / `LightSweep` | Purple light bars sweeping across (three rounds for the highlight-moment opening) |
+| `StageLine` | Central stage line: widens, breathes, and disappears with a white flash on the beat frame |
+| `GhostText` / `ghostOpacity` | White-outline silhouette of the protagonist's large text, shown at 10% before it appears |
+| `HaloRing` | Purple halo under the subject, can be split into back and front to sandwich the subject |
+| `HeroGlow` | Double-layer purple glow around a rectangular protagonist, with a 30-frame breathing cycle |
+| `BigNumber` / `countTo` | Orbitron large number with a purple hard shadow and counting animation |
+| `Sparkle` / `GradBall` | Four-point star / bright-top black ball |
+| `TiltPlane` | Tilted plane (depth layer) |
+| `CameraRig` / `camAt` | Fixed push-in / pull-back / pan / full-page scroll / carry-shift |
+| `SET_PIECE` / `setPiece` | Standard relative frames for the entrance-type highlight moment |
 
-## 5. 版式规律
-- **标题卡**：中心 (640,345–372)，Noto 900 80px scaleX .85 + 下方 3px 白短线 300 宽 + Exo 2 副标 y≈470；章序号 Orbitron 54px 紫在 y268。
-- **流程图**：节点 Pill 150×44 或 Box 200×70，间距 200，箭头 38–70 宽 shaft 3 headL 22–24；当前节点紫、已过灰底、未到灰边。
-- **卡片阵列**：卡 150×92 r8，列距 24，2 帧错峰入场；≥12 张时缩到 70 宽。
-- **左右对比**：左 x≈300–380 / 右 x≈900–1000，各配标签 Pill 在上方 y≈250；中间放 ≈ / vs / + 符号 46–60px。
-- **图表卡**：440×300 白边黑底，网格 #4A4A4A 1px，坐标字 15–18px，曲线紫 3px，重点红点。
-- **公式**：Times Italic 34px 逐 token 绝对定位，每 3 帧出一个 token；灰小字注参数（k=60）。
-- **标签 + 说明**：Pill（紫/橙）在上，Noto 24px 白说明在下 12px。
-- **信息层级**：一帧一个焦点；说明字灰 #A0A0A1；数字用 Orbitron 橙。
-- **尺寸三档与光**（细则 `composition-and-light.md`）：主角 ≥170px 或大字 ≥96px 且必带光；配角 60–110；标签 22–30。上表里的卡 150×92、Pill 150×44 都是**配角尺寸**，不能当主角用；表现「多」用方点阵列，背景只有幕底（星点或点阵波）。
+## 5. Layout patterns
+- **Title card:** centered at (640, 345–372). Noto 900 80px with scaleX .85, a 3px white short line 300 wide beneath, and an Exo 2 subtitle at about y≈470. The chapter number is Orbitron 54px purple at y268.
+- **Flow diagram:** nodes are 150×44 Pills or 200×70 Boxes, spaced 200 apart. Arrows are 38–70 wide with a 3px shaft and 22–24 headL. The current node is purple, completed nodes are grey-filled, and upcoming nodes have grey borders.
+- **Card array:** cards 150×92 with r8, column gap 24, staggered entry 2 frames apart. Shrink to 70 wide when there are 12 or more.
+- **Side-by-side comparison:** left at x≈300–380 and right at x≈900–1000, each with a label Pill above at y≈250. Put ≈, vs or + symbols at 46–60px in the middle.
+- **Chart card:** 440×300, white border, black fill, grid #4A4A4A 1px, axis labels 15–18px, curve purple 3px, highlight point in red.
+- **Formula:** Times Italic 34px, each token positioned absolutely, one token every 3 frames. Grey small-print notes give parameters (k=60).
+- **Label plus description:** purple or orange Pill on top, white Noto 24px description 12px below.
+- **Information hierarchy:** one focus per frame. Description text is grey #A0A0A1. Numbers use orange Orbitron.
+- **Three size tiers and light** (details in `composition-and-light.md`): protagonist ≥170px or large type ≥96px and always lit. Supporting elements 60–110. Labels 22–30. The card 150×92 and Pill 150×44 above are **supporting sizes** and must not be used as protagonists. Show "many" with a grid of squares. The background is only the backdrop (stars or dot wave).

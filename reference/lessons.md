@@ -1,199 +1,197 @@
-# 教训与根因（每条对应一次真实返工；新片结束后把新教训追加到这里）
+# Lessons and root causes (each one corresponds to a real rework; after finishing a new video, append its new lessons here)
 
-## 构建产物（最佳实践）
-- `public/` 只放本片资产（模板 18MB，bundle ≈38MB）；出 still 只用 `scripts/still.sh`，每组一个固定 tag，改码后 `rm -rf build_dev_<tag>` 再建；不要直接 `npx remotion still src/index.ts …`（会在 $TMPDIR 留临时 bundle，脚本已自动清理）。
-- 后台脚本一律绝对路径（shell cwd 会漂移）。
+## Build artifacts (best practices)
+- `public/` holds only this video's assets (the template is 18MB, and a bundle is about 38MB). Generate stills only with `scripts/still.sh`, with one fixed tag per group. After a code change, `rm -rf build_dev_<tag>` before rebuilding. Do not run `npx remotion still src/index.ts …` directly, because it leaves temporary bundles in $TMPDIR. The script cleans them up automatically.
+- Background scripts always use absolute paths (the shell's working directory drifts).
 
-## 分镜写法
-- "末 2 帧不离场 + 下一镜头硬切"会被两侧理解成"我不动、你从节拍帧才入场"→ 组界/镜头间 6–8 帧空场（一片里 5 处）。写成"A 末 N 帧归零淡出 + B 首帧起入场"。
-- 硬切前离场必须归零：6.7%/帧的 exitFade 末帧还剩 40–57%，动态下会"啪"。用 1−(n/N)^1.5。
-- 自下滑入 Δ≈300 在有字幕带的片里会穿过 y637–690（一片里 6 处）。Δ≤120 或侧向滑入 + 前 6 帧渐入。
-- 多元素错峰入场别用 GlitchIn（5 个胶囊各自随机闪像掉帧）；用错峰 slide+fade。
-- "glitch"一词只写在每镜头一个重点词那一格，否则构建 agent 会给所有文字加闪烁（一片 102 处，用户否决）。
-- 分镜给的坐标是参考值，允许构建组按安全区微调；但示例文本、颜色语义、图元必须照办。
+## Storyboard writing
+- "The last 2 frames don't exit + next shot is a hard cut" is read on both sides as "I stay still, and you enter only from the beat frame", which leaves 6–8 empty frames at group boundaries or between shots (five places in one video). Write instead: "A's last N frames fade to zero, and B's first frame starts its entry."
+- Before a hard cut, the exit must reach zero. The exitFade at 6.7% per frame still has 40–57% on its last frame, which pops when things are moving. Use 1−(n/N)^1.5 instead.
+- A bottom-up entry with Δ≈300 crosses the subtitle band y637–690 in a video with subtitles (six places in one video). Use Δ≤120, or a sideways entry with a 6-frame fade-in at the start.
+- For staggered entries of several elements, do not use GlitchIn. Five capsules each flickering randomly look like dropped frames. Use a staggered slide and fade.
+- The word "glitch" should appear only in the one cell for the shot's key term. Otherwise the build agent adds flicker to every line of text (102 instances in one video; the user rejected it).
+- Coordinates in the storyboard are reference values. Build groups may adjust them within the safe area. Example text, color meanings and graphics must be followed exactly.
 
-## 覆盖层 / 结构
-- 覆盖层的压黑/淡出必须在内容之上（SHOTS 数组末尾或 aboveBar），否则末镜头在自己 Sequence 结束时硬切消失。
-- 出场动画帧数要够：8 帧 exitAccel(1.2) 只走了 59px/63% 亮度就被硬切；12 帧 440px + 透明度归零才干净。
-- HUD 同章相邻条目要无空档（上一条延到下一条 from−1）；进章节卡前 8 帧淡出；HUD 换词与内容大 glitch 错开 4 帧，否则同帧全黑。
-- 流程轨末 8 帧淡出，不要一帧消失。
-- 预览合成（每组 = 覆盖层 + 本组镜头）让构建组能看到 HUD/流程轨与内容的关系。
+## Overlay and structure
+- Overlay dimming and fades must sit above the content (at the end of the SHOTS array, or in aboveBar). Otherwise the last shot cuts off hard when its own Sequence ends.
+- Exit animations need enough frames. An 8-frame exitAccel(1.2) moved only 59px with 63% brightness before a hard cut. A 12-frame move of 440px with opacity going to zero is clean.
+- Adjacent HUD items in the same chapter must not have a gap (the previous item runs to from−1 of the next). The HUD fades out over 8 frames before a chapter card. HUD term changes and large content glitches are offset by 4 frames, or the whole frame goes black.
+- The flow track's last 8 frames fade out. It should not vanish in one frame.
+- The preview composition (each group = overlay plus that group's shots) lets build groups see how the HUD and flow track relate to the content.
 
-## 代码
-- kf 首值陷阱：t < 首关键帧返回首值；入场表要以 [镜头起始帧, 画外值] 开头，否则元素提前停在画内。
-- Check/Cross 等 draw-on 在 p=0 时要 return null（linecap 会露出一个点）。
-- 颜色混合函数要能解析 rgb() 与 hex（嵌套解析出 NaN 导致 25 张卡全不可见）。
-- blur σ<0.8 在 Chromium 无效；feConvolveMatrix 走软件路径 0.13 fps 禁用；SVG filter 加 colorInterpolationFilters="sRGB"。
-- CJK 行盒 ascent 让墨迹比 top 低 3–7px，居中文字预扣 dy −2…−5。
-- 最小字号 22px（QC 量测 ink 高）；上标角标可例外 20px。
+## Code
+- Keyframe first-value trap: `t < first keyframe` returns the first value. Entry tables must start with [shot start frame, off-screen value]. Otherwise the element stops in-frame too early.
+- Draw-on for Check, Cross and similar components must `return null` at p=0. Otherwise the line cap leaves a visible dot.
+- Color blending functions must parse both rgb() and hex. Nested parsing that produced NaN made 25 cards invisible.
+- blur σ<0.8 does nothing in Chromium. feConvolveMatrix falls back to a software path at 0.13 fps and is disabled. SVG filters need colorInterpolationFilters="sRGB".
+- The ascent of a CJK line box puts the ink 3–7px below the top. For centered text, pre-subtract dy of −2…−5.
+- Minimum type size is 22px (QC measures ink height). Superscript footnote markers may be an exception at 20px.
 
-## 配音 / 时间轴
-- 定稿后不要改词：构建组代码里帧号硬编码。要改先改词再全体重对位。
-- TTS 词边界起点与音频 onset 误差 ≈1 帧；检测 onset 时窗口别跨到上一句尾音（会误读 −15 帧）。
-- 英文 `|` 切块拼回整句时块之间要补空格（曾把 `powerful|but` 拼成 powerfulbut 送给 edge-tts）；块起始游标也要跳过这个空格。
+## Voiceover and timing
+- Do not change words after the script is final. Frame numbers are hard-coded in build group code. To change words, change the script first, then re-align everything.
+- The start time of a word boundary from TTS is off from the audio onset by about 1 frame. When detecting onset, do not let the window spill into the tail of the previous sentence (this misread by −15 frames).
+- English blocks split by `|` must be rejoined with spaces when the whole sentence is sent to TTS. Otherwise `powerful|but` became "powerfulbut" when sent to edge-tts. The block-start cursor must also skip that space.
 
-## 多 agent
-- 一个 agent 只派一件重活（构建 5–7 镜头 / QC 一章 / 修 1–2 组）；第二件只派轻活。读过大量图片的 agent 再派重活有 ~30% "input too long" 阵亡。
-- API 错误打死的 agent：SendMessage 叫一次可醒；不醒就 TaskStop 重派。
-- 构建组会自行合理偏离（换示例文本、加中文全称、改拓扑、缩帧数）；有出处就放行，一句话裁定；把裁定记进 BUILD_NOTES。
-- QC 读亮度用 int32（int16 溢出全零）。
-
----
-# 第二片《eCPM 与广告竞价》（2026-09-07，48 镜头 / 4′16″）新增教训
-
-## 节拍与可读时间（本片最系统性的两类缺陷）
-- **出处/依据灰小字不要挂在镜头的最后一个字幕块上。** 分镜表默认把出处写在末拍，结果 40–70 字的灰小字 ≥50% α 只停 0.97–1.7 s，读不完 —— 其中一条是"防止观众把公式误认成现行定义"的纠偏句，等于没送达（QC 判高）。**判据：出处小字必须在所属镜头内有 ≥2.5 s（≥75 帧）的 ≥50% α 停留；写法：f0 挂到镜头的第 1–2 个字幕块**（它是背景依据，不需要跟着解说走）。本片 8 处全部返工。
-- **镜头区间 `[句 from−8, 句 to+2]` 开头那 8 帧就是入场预算，别浪费。** 首批元素若等到字幕块起始帧才动，镜头首段会空屏；组界处（前一镜头末 8 帧已归零）会叠成连续 11–16 帧纯黑。本片 9 个镜头中招。**首批元素的 f0 = 镜头首帧。**
-- **末拍动画会溢出镜头末尾。** 最后一个字幕块到镜头结束可能只有 20 帧，22 帧的 slideUp、14 帧的 Cross draw-on 都放不进去 —— 成片上表现为"某个元素整个镜头都没出现，到下一镜头首帧突然满态"。派单时给每个镜头算一下末拍剩余帧数。
-
-## `fadeIn` 与首帧
-- **`fadeIn(n, len)` 在 n=0 返回 0，用它做镜头首帧入场必然空一帧。** 用 `softOp`（首帧 ≈25%）。
-- 更隐蔽的一层：**`softOp(0, 8)` = 25%，白描边亮度只有 65，仍低于"亮度 >70"的空场判据** —— 想让首帧测得出来要写 `softOp(n+1, 6)`（首帧 ≈57%）。同理，紫边 `#A175F1`（亮度 144）在 43% α 下只有 62，也量不到；入场首帧想被量到就得用白边或提高起始 α。
-- **不要给自带 opacity 斜坡的组件再套一层 `fadeIn`**（双重淡入）：转场处会凹一两帧。
-- **同一元素不要渲染两份**（一份 `SoftIn` 常亮 + 一份 `GlitchIn`）：常亮那份把闪烁完全遮住，实测亮度恒定、闪烁等于没做。要么单实例用 `glitchOpacity(n)` 乘在同一个元素上，要么让常亮那份在闪烁窗口内隐藏。
-
-## 数字的事实合规
-- **计数动画的中间值也是"上画面的数字"。** 年份 1995→1998 线性计数会让 1995/1996/1997 清晰可读 4–6 帧；毫秒 0→120 会闪出 `37 ms`/`88 ms`；eCPM 0→30 会闪出 `8`。这些都不在事实清单内。**通则：中间值若是"看起来像事实但没出处"的数字，要么让它不可读，要么不做计数。**
-- 让年份不可读要够狠：blur `6.3→1.3px` 中间年份清晰可读；`12→2px` 末段 ≤7px 时倒数第二个年份仍可辨约 2 帧；**最终 `12→9px`（滚动全程 ≥9px）+ 落定帧归 0** 才干净。已封成模板的 `YearRoll`。
-- **自建示意算例必须与画面上的其它标注自洽。** 本片两处翻车：① 一个「本秒 ＋2405」的实时计数器，正下方紧跟灰小字「一天几十亿次」—— 两者相差 30 倍；② 价值柱公式算出第 8 根 ≈34，而画面自己标着「≈ 1/5」（应为 24）。**派单前把分镜表里每个自建算例横向验算一遍。**
-- 补一条查法：**从源码静态抽取所有会上画面的字面量，和事实清单对账。** QC 是从像素抽帧查的，看不到没被抽到的帧；源码对账把 8 个组一次扫完，本片就是这么抓到那个计数器的（四个 QC 全漏）。
-
-## 字体
-- **`Orbitron[wght].ttf` 不含 `¥`(U+00A5)、`≠`(U+2260)、`≈`(U+2248)**（fontTools 可核）。回退链 `'Orbitron','Audiowide'` 要保留 —— Audiowide 同为几何风格，¥ 与 Orbitron 数字是协调的（放大 3 倍实测；换成回退 Noto 反而更不搭）。`≠`/`≈` 直接用 `FONT_HEAVY`。
-- **Orbitron 的斜杠零（Ø）在多位数里没问题，孤立成单个 `0` 时会被读成图标**（「0 次点击」成片上读作「Ø 次点击」，示意值直接失效）。**孤立单字 `0` 改 `FONT_HEAVY`；`1`–`9` 字形无歧义可保留。**
-- **`Counter` 的默认字族是 `FONT_HEAVY` 不是 Orbitron**，与风格指南「数字用 Orbitron」冲突 —— 本片四个组同时反馈并各自绕开自建了一份。已把默认改成 `FONT_ORB` 并补 `family` 入口。
-
-## 图元与层序
-- **旋转类图元的几何要先验算再画。** `GavelIcon` 旧版把槌头画在支点左上方 76 单位、音块在支点下方 101 单位 —— **槌头到支点的距离远大于支点到接触目标的距离，于是 ±26° 的小角度旋转无论正负都只让槌头绕着高处扫，永远碰不到音块**（QC 实测槌头质心 y 507→499 是往上走的）。这不是参数问题。正确造型：接触物水平躺在目标上方、握柄竖直、支点在握柄顶端。
-- **落槌类动作不要停在"接触姿态"。** 重写后 `angle=0` 是"竖直细握柄 + 槌头压在音块上"，长时间停在这个姿态被读成橡皮图章/通马桶（两个组独立发现）。落槌后要抬回 −18…−24°。
-- **draw-on 的叉/勾不要和箭头挤在同一个 `<Svg>` 里。** 若那个 `<Svg>` 排在卡片组件之前，叉会被卡片的黑底整块盖掉 —— 表现为"这个叉全片不出现"，很容易误判成时序问题。**凡是要压在卡片上的标记，`<Svg>` 必须排在卡片之后。**
-- 图元把 `title` 画在**卡外上方**时要在注释里写明，否则有流程轨的章会顶到 rail；`xLabel` 画在 `cy = h−8` 会让 18px CJK 墨迹压死卡下边框（本片三张卡全中）。
-
-## 覆盖层
-- **进度条的当前章高亮要切在章节卡起始帧，不是本章首句起始帧。** 否则章节卡在画面正中宣告「02 一次竞价」的那 45 帧里，底部进度条还高亮着上一章，两处信息矛盾。
-- **流程轨当前步的切换不要做成 1 帧硬切**（灰底↔紫底同帧翻转），与 HUD 换词「一律 8 帧淡入」不一致。加 7 帧交叉过渡。
-- 流程轨入场的上浮 Δ 要 ≤22：Δ40 会让胶囊下沉到 y184，越过"有轨镜头内容不进 y<175"的空间契约。
-- 片尾 `EndingTop` 的淡入帧数决定"末段纯黑"有多长：20 帧只剩末 11 帧纯黑，改 10 帧才有末 19–21 帧。
-- **片尾压黑的起始帧会吃掉末镜头的收尾动作。** `endingFade=30` 时压黑从"末句结束 −30"开始，本片的收尾敲槌原本落在其后，全片最后一个动作完全看不见。派单时把末镜头的动作排进压黑之前，或调小 `endingFade`。
-
-## 多 agent
-- **tmux/fork 有上限，且是全机共享的。** 本机同时开着 13 个其他 Claude 会话，派到第 8 个构建组时 `respawn pane failed: fork failed: Device not configured`，两次重试都起不来 —— 主会话只能自己顶下一整组（6 个镜头）。**派单前先 `ListAgents` 看全机占用；预留 1–2 个 pane 给后续的 QC/修复轮；完成的 agent 及时 TaskStop 释放。**
-- **"边查边 append"对 QC agent 是硬要求，不是建议。** 本片一个 QC agent 攒到最后写盘，跑了一小时零产出、消息也不回，只能 TaskStop 重派（重派时把主会话已查到的结论直接给它，并让它 QC+修复一并做，反而更快）。
-- **不要照抄 agent 的自评。** 本片抽验发现：一个组自评"中间年份模糊不可读"，实际出图清晰可读（它自己在复盘时也承认"§6 偏离①的自评过于乐观"）；另一个组报告"已改为调用共用 exitOp"而磁盘时间戳看起来更早（这条查下来是我误读，报告是对的）。**结论：报告要抽验，但也别急着断定 agent 说错了 —— 先把证据看全。**
-- **构建组会发现分镜表本身的错误，要鼓励并快速裁定。** 本片三条最有价值的改进都来自构建组：价值柱公式与画面标注矛盾、年份转盘的事实合规漏洞、以及据此主动偏离不给毫秒数做计数。裁定时把它推广成全片通则并写回分镜表，比只批准单点改动值钱得多。
-- 主会话自己要留一手**与 QC 互补的检查**：帧覆盖静态分析（帧区间/空洞/重叠）、源码字面量与事实清单对账、闪烁白名单源码级计数。这三项都不用渲染，几秒钟跑完，而且抓到的都是 QC 从像素查不到的问题。
-
-## 风格传递（2026-09-08 复盘：用 skill 做的《广告竞价》vs 样片《RAG》）
-- **skill 写了禁令没写审美驱动**：安全区、白名单、归零、节拍全传过去了（新片在这些纪律项上甚至更好），但「画多大、谁发光、高光时刻怎么编排」只在做样片的人脑子里 → 新片主体中位高度 172px vs 219px、29% 时长最大物体 <110px、主角全是无光白线框、高光时刻用「胶囊 + 图标 + 一行字」应付。修法：`composition-and-light.md` 硬规则 + 分镜表加「主角·尺寸」「光」两列 + 高光时刻清单。
-- **样片源码没人读**：8 个构建组 BUILD_NOTES 零处提到 shots_src，光效图元（LightBar/HaloRing/GhostText）留在样片组内文件里没进模板 → 新片一个组重新发明了 LightBar。修法：光效图元升进 `template/src/fx.tsx`；模式表最后一列给源码路径，构建 prompt 从「可参考」改成「必读」。
-- **QC 只查缺陷不查「空 / 小 / 暗」**：四轮 QC 全过，画面还是小而暗。修法：`scripts/frame_metrics.py` 量最大物体高度 / 主角区柔光 / 碎片，写进 QC 判据与终检。
-- **运镜被本文自己压掉了**：旧版 build-rules 写「静态镜头为主」，结果样片和新片都只有 2.2–2.5 次/分钟、零次推近，而风格来源的原片是 6.6 次/分钟、平均 16 帧、含推近拉远视差。修法：`CameraRig` 组件 + 运镜预算（每章 ≥3）+ 分镜表运镜清单。
-- 两片动效数量、节奏、柔光总面积几乎相同（每帧变化 0.47 vs 0.56，事件 72 vs 76 /分钟）——**差距不在「动得多不多」**，别往加动效的方向修。
-
+## Multi-agent work
+- Give each agent only one heavy task (build 5–7 shots, QC one chapter, or fix one or two groups). A second task should only be light. About 30% of agents that had read many images died with "input too long" when given a heavy task.
+- An agent killed by an API error: a SendMessage can wake it once. If it doesn't wake, TaskStop and redispatch.
+- Build groups make reasonable deviations on their own (different example text, full Chinese names, layout changes, fewer frames). Accept them when they have a source, rule in one sentence, and record the ruling in BUILD_NOTES.
+- QC reads brightness as int32 (int16 overflowed to all zeros).
 
 ---
-# 第三片《电影运镜》（2026-09-08，50 镜头 / 4′00″，一轮 QC 后 高0/中0/低14）新增教训
+# Second video, 《eCPM 与广告竞价》 (2026-09-07, 48 shots / 4′16″): new lessons
 
-## 当主题本身是几何的：先造一个真的，别用 CSS 假造
-- 本片的中心论点是「透视只由机位决定，与焦距无关」。**如果画面用 `scale` 假造，推近和变焦会长得一模一样，整章等于讲错。** 所以在 `ui.tsx` 里实现了真的小孔成像投影（`project3` / `FrameScene` / `camOrbit` / `camDollyZoom`），推 = 只改 `cam.z`、变焦 = 只改 `cam.f`、摇 = 只改 `cam.yaw`…… QC 逐像素验证：SC37 两框人物 275/275px 相等而背景门高 197 vs 158px（差 20%），SC38 人物全程恒 164px 而后墙 506→360px。**论点因此是"画面证明"的，不是"旁白声称"的。**
-- 通则：**凡是"两种做法看起来像但其实不同"的主题（推 vs 变焦、tilt vs 升降、真长镜头 vs 假长镜头），都必须让底层机制真的不同**，否则观众看到的两幅图会一样。
-- 反面成本：真投影会带来一整类新缺陷（画框变空、物体越出画框、人物尺寸出安全带），见下条。
+## Beats and readable time (the two most systematic defects in this video)
+- **Source or evidence small print must not hang on the last subtitle block of a shot.** The storyboard by default put the source at the final beat. As a result, grey small print of 40–70 characters at ≥50% α stayed up for only 0.97–1.7 s, too short to read. One of them was a correction sentence ("keep viewers from mistaking the formula for the current definition"), so it did not land at all (QC rated it high). **Criterion:** source small print must stay at ≥50% α for at least 2.5 s (≥75 frames) within its shot. Method: attach it at f0 to the first or second subtitle block of the shot. It is background evidence and does not need to follow the narration. All eight occurrences in this video needed rework.
+- **The first 8 frames of a shot's range `[sentence from−8, sentence to+2]` are the entry budget. Do not waste them.** If the first elements wait until the subtitle block start frame to move, the shot opens on an empty screen. At a group boundary (where the previous shot's last 8 frames have already gone to zero), 11–16 frames of pure black stack up. Nine shots in this video were affected. **The f0 of the first elements = the shot's first frame.**
+- **Animations at the end of a shot can overrun the end.** The last subtitle block may be only 20 frames from the shot's end. A 22-frame slideUp or a 14-frame Cross draw-on will not fit. On screen, one element is missing for the entire shot and then suddenly appears in full at the next shot's first frame. When dispatching, calculate the remaining frames for the final beat of each shot.
 
-## 派 8 个 agent 之前，先用探针把共用系统跑一遍
-- 我先写了一个 `_probe.tsx`，一帧一格渲染 8 种相机状态，出 8 张图看一眼。**当场抓到两个会让 8 个组集体做错的问题**：① `pitch=−22°` 时画框几乎全空（人物 180px 但画框 332px，人整体在框内，pitch 一动就把人扫出去只剩地板）；② 默认 `personZ=520` 时人与后墙只差 165cm，推 vs 变焦的背景差别只有 12%，**肉眼看不出来**——必须把人挪近到 `personZ=320` 才有 26% 的差别。
-- 这两条如果不提前发现，就是 SC17 与 SC37/SC38 三个镜头（含两个高光时刻）集体报废。**探针成本 10 分钟，返工成本 3 个组。**
-- 探针的产物要变成分镜表里的**「相机参数速查」实测表**（`cam.z` → 人物画面高的对照表 + 安全带 150–300px），派单时直接给数字，不要让每个组自己踩。
+## fadeIn and the first frame
+- **`fadeIn(n, len)` returns 0 at n=0, so using it for a shot's first-frame entry always leaves one blank frame.** Use `softOp` instead (about 25% on the first frame).
+- A subtler layer: **`softOp(0, 8)` = 25%. A white outline at that brightness is only 65, which is still below the "brightness above 70" empty-frame criterion.** To make the first frame measurable, write `softOp(n+1, 6)` (about 57% on the first frame). Likewise, a purple border `#A175F1` (brightness 144) is only 62 at 43% α, which cannot be measured. For a first frame to be measurable, use a white border or raise the starting α.
+- **Do not wrap a component that already has its own opacity ramp in another `fadeIn`** (double fade-in). It produces a dip of one or two frames at transitions.
+- **Do not render the same element twice** (one constant `SoftIn` copy plus one `GlitchIn` copy). The constant copy hides the flicker completely. Measured brightness was constant, so the flicker did nothing. Either use a single instance with `glitchOpacity(n)` multiplied into the same element, or hide the constant copy during the flicker window.
 
-## 跨组一致性：把常量放进共用层，不要让 agent 互相对齐
-- v1 里我一开始让「G6 建矩阵、G7 复用」「G5 复用 G3 的间距标注」——结果 G7 要跨组 import、G6 与 G3 各存了一份逐参数复制的 `PinCross`，并且 G3 一改 G5 就跟着变。
-- 更好的做法（本片后半采用）：主会话**先把跨组共用的东西放进 `ui.tsx`**——`LAYOUT`（版式坐标）、`frameInner`、`frameMarks`（门/人/信的包围盒，用同一投影算）、`ACTION_WORDS`、`softOp` / `exitZero` / `mix` / `Vignette` / `MarkBox`。八个组直接 import，天然一致，零协调成本。
-- 教训的具体形态：**`softOp` 被四个组各写了一份，四份公式还不一样**（G1/G2 的在 n=0 返回 0，靠调用处传 `n+1` 补偿；G3/G4 的把 +1 写进函数）。协议里反复写「用 softOp 不要用 fadeIn」却没在共用层提供它，等于逼每个组自己发明。**协议提到的工具必须在共用层真的存在。**
+## Factual compliance for numbers
+- **Intermediate values in a counting animation are numbers shown on screen.** A linear count from 1995 to 1998 makes 1995, 1996 and 1997 readable for 4–6 frames. A count of milliseconds from 0 to 120 flashes `37 ms` and `88 ms`. An eCPM count from 0 to 30 flashes `8`. None of these are on the fact list. **General rule: if an intermediate value looks like a fact but has no source, either make it unreadable or do not count to it.**
+- Making the years unreadable needs to be thorough. Blur from `6.3→1.3px` still left intermediate years readable. `12→2px` still left the second-to-last year recognizable for about 2 frames when it was at 7px or less. **The final version `12→9px` (at least 9px throughout the roll) plus zero on the settled frame** is clean. This is packaged as the `YearRoll` template.
+- **Custom illustrative calculations must agree with the other labels on screen.** Two failures in this video: (1) a live counter reading "this second +2405" with the grey small print "tens of billions of times a day" right beneath it. The two differed by a factor of 30. (2) A value-bar formula produced ≈34 for the eighth bar, while the screen labeled it "≈ 1/5" (it should have been 24). **Before dispatch, cross-check every custom calculation in the storyboard table against the others.**
+- A check to add: **statically extract every literal that appears on screen from the source and reconcile it against the fact list.** QC works from pixel samples and cannot see frames it did not sample. Reconciling against the source covered all eight groups in one pass. This is how the counter above was caught (all four QC passes missed it).
 
-## 高光时刻的"清场 → 扫光"开场本身会被判空场
-- v1 两条"高"都是这个形态：SC12（论点型）前 79 帧只有一条舞台光线 + 一轮扫光细带，最大物体 ≤46px；SC40 前 66 帧只有五个未激活的暗框 + 一枚胶囊。
-- `composition-and-light.md` §6 写了「扫光 / 舞台光线阶段（内容区柔光 ≥10000px²）不算空场」——但**一轮扫光的柔光面积够不上 10000px²**（实测 5004px²）。于是"按编排做的清场开场"反而触发空场判据。
-- 修法有二，最好同时做：① **扫光加到三轮**并把 `StageLine` 柔光半径加倍，真正落进豁免区；② **在第 1 个节拍就给一个临时主角**（本片把上一镜的大字承接过来缩到 120px，或把该拍的关键词直接做成 96px 大字，下一拍再缩小让位）。
-- 通则：**登场型/论点型高光时刻的前 60–80 帧要单独算一遍"这几帧最大物体多大"**，别假设"清场 + 光效"能自动过关。
+## Fonts
+- **`Orbitron[wght].ttf` does not include `¥` (U+00A5), `≠` (U+2260) or `≈` (U+2248)** (verify with fontTools). Keep the fallback chain `'Orbitron','Audiowide'`. Audiowide is also geometric, so ¥ matches Orbitron digits well (measured at 3× size; switching to the Noto fallback looked worse). Use `FONT_HEAVY` directly for `≠` and `≈`.
+- **Orbitron's slashed zero (Ø) is fine in multi-digit numbers, but a lone `0` reads as an icon.** ("0 clicks" appeared on screen as "Ø clicks", and the illustrative value was lost.) **Set a lone single-character `0` to `FONT_HEAVY`. The glyphs `1` through `9` are unambiguous and can stay.**
+- **The default family for `Counter` is `FONT_HEAVY`, not Orbitron.** That conflicted with the style guide's "numbers use Orbitron". Four groups reported this at the same time, and each worked around it with its own copy. The default is now `FONT_ORB`, with a `family` option added.
 
-## 片尾压黑 vs 最后一个字幕块：要算，而且要算两次
-- lessons 里已经有「片尾压黑会吃掉末镜头收尾动作」，本片踩的是它的**升级版**：不是动作被吃掉，而是**全片结论大字只有 6 帧（0.20 s）满态可读**。
-- 成因是三件事叠加：末字幕块起于 f7067 → `GlitchIn` 12 帧（**其中 7 帧字是灭的**）→ 压黑 f7085 起吃亮度。18 帧的窗口里能读的只有 6 帧。
-- **判据**：`(S_last.to − endingFade) − 末字幕块起始帧 ≥ 30 帧`，否则结论读不完。`GlitchIn` 的 12 帧里有一半是"灭"的，等于**实际可读时间只有窗口的一半**——用 glitch 做收尾大字时要按双倍预算算。
-- 本片的修法：把**整句**结论提前到倒数第二拍（f7043）一次入场，末拍改由"光在动"（光环波纹加密 + 柔光脉冲 + 描边渐显）承担可察觉变化。**注意提前的落点不能压在白闪帧上**——QC 发现我原本提议的 f7040 正好是一段运镜白闪的首帧，glitch 落上去会读成"闪坏了"，改 f7043。
-- 派单时就该给末镜头算这张表：末字幕块起始帧 / 压黑起始帧 / 中间有没有白闪 / glitch 的有效可读帧数。
+## Graphics and layering
+- **Verify the geometry of rotating graphics before drawing.** The old `GavelIcon` drew the gavel head 76 units up and to the left of the pivot, and the sound block 101 units below the pivot. **The distance from the head to the pivot was much greater than the distance from the pivot to the contact target.** A ±26° rotation of a small angle therefore swept the head around the high point, and it never reached the sound block, whether the angle was positive or negative. QC measured the head's centroid moving from y 507 to 499, which is upward. This is not a parameter problem. The correct design has the contact object lying horizontally above the target, the grip vertical, and the pivot at the top of the grip.
+- **Strike-type motions must not hold at the contact pose.** After the rewrite, `angle=0` meant a vertical thin grip with the head pressed onto the sound block. Holding that pose for a long time read as a rubber stamp or a plunger (two groups found this independently). After the strike, lift back to −18…−24°.
+- **Do not put draw-on crosses or checks in the same `<Svg>` as arrows.** If that `<Svg>` comes before the card component, the card's black fill covers the cross. The result: "this cross never appears in the whole video", which is easy to misread as a timing problem. **Any marker that must sit on top of a card needs its `<Svg>` placed after the card.**
+- When a graphic draws its `title` above the card, write that in a comment. Otherwise a chapter with a flow track bumps into the rail. `xLabel` drawn at `cy = h−8` pushes 18px CJK ink into the bottom border of the card (all three cards in this video).
 
-## 变换缩放会把字号带下去
-- SC34/SC39 的十个动作胶囊用 `scale(0.72)` 做承接位移，26px 的字变成 **18.7px**，跌破「最小字号 22px」。QC 从像素查不出来（它量的是 ink 高度，18.7px 的 CJK ink 约 14px，容易被当成"小标签"放过），是构建组 G7 自己算出来报的。
-- **通则：凡是整组 `scale`/`transform` 的地方，把里面所有字号乘一遍缩放系数再对照 22px 下限。** 修法是改源头字号（26→31，31×0.72 = 22.3），不是改缩放。
+## Overlay
+- **The current-chapter highlight on the progress bar must switch on the chapter card's start frame, not on the first sentence of the chapter.** Otherwise, during the 45 frames when the chapter card announces "02 One auction" in the center, the progress bar at the bottom still highlights the previous chapter. The two displays contradict each other.
+- **Do not switch the current step on the flow track in one frame** (a grey background flipping to purple in the same frame). That is inconsistent with HUD term changes, which all fade in over 8 frames. Add a 7-frame crossfade.
+- The upward offset of a flow-track entry must be ≤22. A Δ of 40 sinks the capsule to y184, which crosses the spatial contract "content in shots with a track must not go above y175".
+- The fade-in length of the ending `EndingTop` decides how long the final stretch of pure black lasts. With 20 frames, only the last 11 frames are pure black. With 10 frames, the last 19–21 frames are.
+- **The start of the ending blackout eats the closing action of the last shot.** With `endingFade=30`, the blackout started 30 frames before the final sentence ended. The closing gavel strike happened after that point, so the last action in the whole video was never visible. When dispatching, move the last shot's action before the blackout, or lower `endingFade`.
 
-## 双联版式：左右两半必须真的是同一台相机
-- 本片主版式是「左俯视平面图 + 右取景框」。v1 里平面图把门画在**左墙**，而画框里门在**后墙**——两半互相矛盾，而且平面图的视锥里根本没有门。QC 一眼看出来。
-- 成因：`roomAnchors()` 是我按"平面图好看"手写的示意坐标，`SCENE` 是按世界几何写的，两者从没对齐过。**修法：让平面图的门位由 `SCENE` 反算**（世界 x=−245 在 x∈[−440,440] 里的归一化位置 0.2216），门画到上墙。
-- 但也要认清代价：**把平面图改成 `SCENE` 的严格投影会移动所有组已调好的视锥角度**。本片只做了低风险的一半（门位归正 + 信封缩小），剩下的（相机朝向、视锥张角、房间比例）作为"示意图不是严格投影"记进交付说明。**这类改动要么在派单前做完，要么就承认它是示意图。**
-- 同一个图元在不同组里颜色不一致也属这类：`FovCone` 默认色是紫，G5 显式传了灰、G6 用了默认 → 第 3 章上下半视锥颜色不同，还是 SC35「紫色碎片≥8」的主因。**默认值要按规范设（配角不发光 → 默认中性灰），不要让"传不传参数"决定风格。**
+## Multi-agent
+- **tmux and fork have a limit, and it is shared across the whole machine.** Thirteen other Claude sessions were open on this machine. When dispatching the eighth build group, `respawn pane failed: fork failed: Device not configured` came up twice in a row, and the group never started. The main session had to build all six of its shots itself. **Before dispatching, run `ListAgents` to see machine-wide usage. Keep one or two panes free for later QC and fix rounds. Use TaskStop as soon as an agent finishes.**
+- **"Append as you go" is a hard requirement for QC agents, not a suggestion.** In this video, one QC agent saved everything at the end. It ran for an hour with zero output and did not answer messages. It had to be TaskStopped and redispatched. The redispatch handed the main session's findings directly to the new agent and asked it to do QC and fixes together, which was faster.
+- **Do not copy an agent's self-assessment.** A spot-check in this video found one group reporting "intermediate years are blurry and unreadable" when the output was clearly readable. The group's own retrospective admitted its "deviation ① self-assessment was too optimistic". Another group reported "changed to call the shared exitOp", but the disk timestamps looked earlier. On investigation, I had misread the timestamps, and the report was correct. **Conclusion: spot-check reports, but do not rush to conclude the agent is wrong. Look at all the evidence first.**
+- **Build groups find errors in the storyboard itself. Encourage that and rule quickly.** The three most valuable improvements in this video came from build groups: the value-bar formula contradicting the on-screen label; a factual-compliance gap in the year roll; and, based on that, an independent decision not to count milliseconds. When you rule, generalize the decision into a video-wide rule and write it back into the storyboard. That is far more valuable than approving a single local change.
+- The main session should keep its own **check that complements QC**: static frame-coverage analysis (frame ranges, gaps, overlaps), reconciliation of source literals against the fact list, and a source-level count of the glitch allow-list. None of these needs rendering. They finish in seconds, and they catch problems QC cannot see from pixels.
 
-## 房间/场景几何要先想清楚"镜头会转到哪"
-- `SCENE` 一开始只有后墙、且只到 x=±440，没有侧墙。结果**大角度摇（|yaw|≳8°）、环绕、横移时画框前导侧露出成片纯黑**——G3 被迫把甩镜落点从 +42° 收到 +22°，G4 被迫把 SC19 两框的 yaw 差从 60° 收到 26°，而 G6 的 SC32 要环绕 55°（θ=55° 时后墙右缘只到画框 61%，39% 是空区）。
-- 补两面侧墙（逐段画 + 逐段判可见性，推近到侧墙之后能优雅退化）一处改动同时救了三个组，**而且侧墙的透视收敛线反而成了「横移有视差」「背景独自被抽走」最好的证据**——G5、G6 都主动回报效果变好。
-- 通则：**场景几何要按"最极端的那次运镜"来设计**，不是按默认机位好看来设计。派单前把所有运镜的角度/位移列一遍，问一句"这个角度下画框四边各是什么"。
-
-## 多 agent（本片新增）
-- **pane 上限又撞了，且比上次早**：本机同时开着 14 个其他会话，我派到**第 5 个** agent 就 `respawn pane failed: fork failed: Device not configured`（上一片是第 8 个）。**修法：按 4 个一波派，一波完成并 `TaskStop` 释放后再派下一波**；派单前 `ListAgents` 看全机占用。
-- **QC agent 被 API 错误打死了两个**（"The response stopped arriving"、ENOTFOUND）。`SendMessage` 叫一次都醒了，接着做完。**但醒过来只保住了已写盘的部分**——所以"边查边 append"不是建议而是硬要求：本片一个 QC agent 跑了 46 分钟仍是 0 字节，我催了一次它才开始写，如果它先死掉就全丢了。
-- **QC 的量化验证比"看图说 OK"值钱得多。** 本片最有价值的 QC 产出是两组逐像素读数（SC37 的 275/275px 与 197/158px、SC38 的恒 164px 与 0.711×）——它们把"论点成立"从主观判断变成了可复核的证据，直接写进了交付说明。派 QC 时要**指名要哪几个读数**。
-- **QC 会修正主会话的修法**。SC50 我提的修法方向对，但 QC 实测发现落点 f7040 压在白闪帧上、且 `CamIcon` 的入场轨迹横穿结论字线——它给的三行修正版比我的原案完整。**派修复单前先让 QC 核一遍自己的修法。**
-- **主会话自己写的静态检查（`scripts/selfcheck.py`）值得每片都留**：帧覆盖（50 镜头连续无空洞、与分镜表帧区间对账）、闪烁白名单源码级计数、画面字面量与事实清单对账。几秒跑完，抓到的是 QC 从像素查不到的（例如 `Danny`/`Jack`/`MOVE`/`Dolly` 这些没进事实清单的词）。**噪声过滤要写好**（滤掉 import 路径、CSS 值、camelCase 标识符），否则报一堆假阳性没人看。
-
-
-## 一分钟《Agentic RL》（2026-09-09）新增教训
-- edge-tts 新版 Communicate 默认可能是 SentenceBoundary，而旧 tts_build.py 只收 WordBoundary，会静默留下空列表并退化成按字数估字幕。显式传 `boundary="WordBoundary"`；缓存命中时检查词边界非空，没有词边界应停止而非误报为精准同步。
-- 短片缩短 CHAPTER_GAP 后，HUD 原有“间隔<30帧即视为同章”的规则会把上一章胶囊覆盖到下一章章节卡。应按句子的 chapter 比较，而不是猜测间隔。进度条高亮应与章节卡开始对应。
-- 只有40帧的片头应重新编排动效预算，不能把长片头默认的 glitch、字幕副标、推镜挤在一起。本片最终选择三行统一6帧淡入，再进行33帧缓动轻推镜；无需强求片头闪烁。
-- `mktemp` 生成带点后缀的测渲目录在 Remotion 4.0.507 中可能被当成输出扩展名拒绝。`explainer_test_TAG_XXXXXX` 这样的无点目录可正常输出序列帧。
-- 图形光环与标签应看放大帧：仅contact sheet会漏掉白色环线贴住白字的细节。本片对有光环的芯片标签额外下移25px，解决环底穿字。
-
+## Style transfer (retrospective 2026-09-08: the ad-auction video built with the skill vs the sample 《RAG》)
+- **The skill wrote the prohibitions but not the aesthetic drivers.** Safe areas, the allow-list, zero-on-exit and beat timing all carried over (the new video was even better on these disciplinary items). But "how big things are, what glows, and how highlight moments are arranged" existed only in the head of whoever made the sample. Result: median protagonist height 172px versus 219px, 29% of the time with the largest object under 110px, protagonists that were all unlit white outlines, and highlight moments handled with "capsule + icon + one line". Fix: add the hard rules in `composition-and-light.md`, add "protagonist·size" and "light" columns to the storyboard table, and add a highlight-moment list.
+- **Nobody read the sample's source:** none of the eight build groups' BUILD_NOTES mentioned shots_src. The light primitives (LightBar, HaloRing, GhostText) stayed inside the sample's group files and never reached the template, so one new group reinvented LightBar. Fix: move the light primitives into `template/src/fx.tsx`, make the last column of the pattern table list source paths, and change the build prompt from "for reference" to "required reading".
+- **QC only checked for defects, not for "empty, small or dim":** four QC rounds all passed, but the frames were still small and dim. Fix: `scripts/frame_metrics.py` measures the largest object's height, the protagonist area's soft light, and debris. Those measurements went into the QC criteria and the final check.
+- **The skill's own text suppressed motion:** the old build rules said "mostly static shots". So both the sample and the new video had only 2.2–2.5 camera moves per minute, with zero push-ins. The source the style came from had 6.6 moves per minute, averaging 16 frames each, including push-ins, pull-backs and parallax. Fix: the `CameraRig` component, a camera budget (at least 3 per chapter), and a camera-move list in the storyboard.
+- The two videos had nearly identical motion counts, pacing and total soft-light area (per-frame change 0.47 vs 0.56, events 72 vs 76 per minute). **The gap is not "how much moves".** Do not fix it by adding more motion.
 
 ---
-# 第四片《The AI Systems Performance Engineer》（2026-09-10，英文，48 镜头 / 5′07″，9 组，一轮 QC 高 0）新增教训
+# Third video, 《电影运镜》 (2026-09-08, 50 shots / 4′00″, after one QC round: high 0 / medium 0 / low 14): new lessons
 
-## 英文片的语速与读音
-- **kokoro `am_liam` speed 1.0 实测 ≈2.3 词/秒（散文 2.25、缩写密集句 1.4–1.8），不是 edge-tts 的 2.96**。5 分钟英文片 ≈640 词 / 48 句，按 SKILL.md 表里 700+ 词写会超到 6′17″。第一次跑先合成全稿看 `speech=` 读数再回调篇幅（本片就是这么把 733 词压到 642）。
-- kokoro 会把 CUDA / NIXL / MIG / DeepGEMM 逐字母拼读、把 v5.0 读成 "v five zero"。`[词](/音标/)` 覆写语法有效，已做成 `tts_build.py` 的 `PRONOUNCE` 表（只改送 TTS 的文本，字幕不变）。派研究员时顺手让它列出全部缩写，合成前先 dump 音素（`KPipeline` 返回的 `ps`）检查。
-- **Noto Sans SC 的弯引号 “ ” 与 … 是 1em 全宽字形**，英文里留出一个大空档；画面上一律用直引号（G9 发现）。
-- `Pill` 的 `textDy` 默认 −2 是中文基线补偿，英文片要跟 `TEXT_DY`；模板已改。
+## When the topic itself is geometric: build a real version, do not fake it with CSS
+- The core claim of this video was "perspective depends only on the camera position, not on the focal length." **If the picture uses `scale` to fake it, a push-in and a zoom look identical, and the whole chapter teaches the wrong thing.** So a real pinhole projection was implemented in `ui.tsx` (`project3` / `FrameScene` / `camOrbit` / `camDollyZoom`). A push moves only `cam.z`, a zoom moves only `cam.f`, and a pan moves only `cam.yaw`. QC verified this pixel by pixel. In SC37, the person was 275/275px in both frames, while the background door height changed 197 versus 158px (a 20% difference). In SC38, the person was a constant 164px while the back wall went from 506 to 360px. **The claim is therefore proven on screen, not just asserted in narration.**
+- General rule: **whenever two approaches look alike but are actually different (push versus zoom, tilt versus crane, a real long take versus a fake one), the underlying mechanism must really differ.** Otherwise the two images the viewer sees will be the same.
+- The cost of the reverse: a real projection brings a whole new class of defects (frames that go empty, objects leaving the frame, the person being too small to fit the safe zone). See the next item.
 
-## 「入场即停」是缺陷：动词驱动的持续动作
-- 用户看 30 秒样片后的第一反应不是风格而是"能不能用更丰富的动效描述这段话"。量化后：4/6 镜头静止帧 42–72%、最长静止 2.8 s；SC04 高光时刻全程在动就明显好看。**样片《RAG》也有同样的毛病，所以"对标样片"筛不出它。**
-- 规则（用户裁定，进分镜表全局约束 §9）：每个字幕块的动词有持续到下一拍的动作；入场后不许完全静止 >30 帧；没有其它运镜的镜头加 1.0→1.05 慢推。边界不变（一个主角、一处闪烁、不加碎屑）。量化：内容区 320×180 采样逐帧灰度平均变化 <0.35 为静止帧，静止 ≤40%、最长 ≤1 s（`scripts/motion_check.py`，已进模板）。
-- **组级检测（低分辩率 `--scale` 渲染）偏松，成片 fin_frames 复测才是判据**：v1 组级 48/48 达标，成片复测 11 个镜头超限（3 个真静、8 个只有小面积动作——数据包、游标）。已把组级渲染改成 0.5 倍 + JPEG q80，并让 `--frames` 模式多给一列「最长静止段内全分辩率变化像素数」区分真静（<800）与小面积动作。小面积动作的修法是**加大幅度**（运动元素更亮更大更密、主角本体 30 帧呼吸 ±2%），不是加元素。
-- 慢推 1.05 对 320×180 采样几乎无贡献，它是给观众的"常动层"，不是给 metric 的。
+## Before dispatching 8 agents, run a probe through the shared system
+- I wrote a `_probe.tsx` first. It rendered eight camera states, one per frame, and I looked at all eight images. **That probe caught two problems that would have made all eight groups fail together:** (1) At `pitch=−22°`, the frame was almost entirely empty (the person was 180px, but the frame was 332px. The person was inside the frame, but any pitch change swept them out, leaving only the floor). (2) With the default `personZ=520`, the person and the back wall were only 165cm apart, so the difference in background between push and zoom was only 12%, which **the eye cannot see**. The person had to move closer, to `personZ=320`, for a 26% difference to appear.
+- If these two issues had not been caught early, they would have ruined SC17 and the three shots SC37/SC38 (including two highlight moments). **The probe cost 10 minutes. The rework would have cost three groups.**
+- Turn the probe's output into a measured **"camera parameter quick reference" table** in the storyboard (`cam.z` → person's on-screen height as a lookup, plus a 150–300px safe band). Give the numbers directly at dispatch. Do not let each group rediscover them.
 
-## 共用层：派单前把跨组要用的东西做进 ui.tsx
-- 本片派 G1 前先探针渲了 8 个主题图元（GPUChip / TimelineBar / Gauge / ClusterGrid / RackIcon / PersonIcon / CodeCard / RepoCard），一帧看完再派——零返工。贯穿示例的 `ProfilerPanel`（+ 行数据常量）在 G3/G4 派单前放进 ui.tsx，两组直接 import；后来又补了共用**游标**与 `glowIdleK`，让"同款"有保证。
-- **协议提到的工具必须在共用层真的存在**（第三片教训重演）：G1 又自建了 softOp / exitOp / glowOffK / mixHex / GlowBlob / Vignette，主会话在派 G2 前升进共用层并写进 dispatch_notes §0；之后各组零重复。但 camZoomAbout / ArrowPulse / LLMIconLive / FilmPanel 仍被 3–4 个组各写一份——**下一片开工前把它们进模板**。
-- `mixHex` 返回 `rgb()`，再喂回 `mixHex` 得 `rgb(NaN)` 且无报错（G8 卡边与分叉描边消失、G9 五枚胶囊边框不渲染）。要么接受 rgb() 输入，要么提供返回 #hex 的版本。
-- `TimelineBar` 的 idle 橙光 box-shadow 画在 `overflow:hidden` 容器里会被裁掉（G4 发现）；带光的子元素要画在裁切容器外。`TiltPlane` 的 children 会被 scaleY .5 压扁，文字/图标要"直立"放在层面上（G5）。
-- `Vignette` 顶带从 y0 起会压暗 HUD 胶囊（三个组各自发现）；底带到 720 会透过半透明进度条把条压暗。模板已改成 y100–200 / 560–687。
-- `CodeCard` tag 16px 低于 22px 下限，四个组都用了它才被 QC 抓到——**共用图元里的字号也要过 22px 下限**。
+## Cross-group consistency: put shared constants in the shared layer, do not let agents align with each other
+- In version 1, I first had "G6 builds the matrix, G7 reuses it" and "G5 reuses the spacing labels from G3". Result: G7 had to import across groups, G6 and G3 each kept a copied `PinCross` with every parameter duplicated, and changing G3 silently changed G5.
+- A better approach (adopted for the second half of this video): **before dispatch, the main session puts everything shared across groups into `ui.tsx`**: `LAYOUT` (layout coordinates), `frameInner`, `frameMarks` (bounding boxes for the door, person and sign, computed with the same projection), `ACTION_WORDS`, and `softOp` / `exitZero` / `mix` / `Vignette` / `MarkBox`. All eight groups import them directly, so consistency is automatic and needs no coordination.
+- The concrete failure: **`softOp` was written separately by four groups, and each version was different** (G1 and G2 returned 0 at n=0 and relied on the caller to pass `n+1`; G3 and G4 built the +1 into the function). The protocol repeatedly said "use softOp, not fadeIn", but never supplied `softOp` in the shared layer. That forced every group to invent its own. **Any tool the protocol mentions must actually exist in the shared layer.**
 
-## 运镜与安全区
-- 慢推 1.05 绕 (640,360) 后内容必须落在 **x 89–1191 / y 122–607**，推近 1.25–1.3 按比例算；左右占满的版式（profiler 面板 x190–1090）宁可不慢推。承接位移里胶囊不能随组 scale（字号跌破 22 或胶囊变超宽），几何独立插值。
-- **运镜应在节拍前结束而不是从节拍开始**（G2 SC09 把整组平移从 1616–1642 提前到 1590–1616，标签才落在节拍 ±0）。"运镜期间不入新元素"只约束运镜层之外的新元素：随刚体一起平移的胶囊可以在平移中 SoftIn（G4 SC20 QC 中项就是没这么做）。
-- 承接两镜头的慢推要连续（SC12 1.0→1.02、SC13 1.02→1.05、SC14 从 1.05 起推近），否则交界帧跳。
+## A "clear then sweep" opening for a highlight moment can be judged an empty frame
+- In version 1, both "highs" had this shape. SC12 (a claim-type shot) had, for its first 79 frames, only one stage ray plus one thin sweep band, with the largest object at 46px or less. SC40 had, for its first 66 frames, only five inactive dark boxes plus one capsule.
+- `composition-and-light.md` §6 said "the sweep and stage-line phase (content-area soft light of at least 10000px²) is not an empty frame". But **the soft light from one sweep round falls short of 10000px²** (measured at 5004px²). So an opening that clears the scene, as the arrangement requires, instead triggers the empty-frame criterion.
+- Two fixes, and it is best to do both: ① **add a third sweep round** and double the radius of the `StageLine` soft light, so it truly falls within the exemption zone. ② **On the first beat, put in a temporary protagonist.** This video carried the previous shot's large text into the opening and shrank it to 120px, or made that beat's key word a 96px large text, which then shrinks on the next beat to make room.
+- General rule: **for entrance-type or claim-type highlight moments, calculate separately the largest object's size over the first 60–80 frames.** Do not assume "clear plus light effects" passes automatically.
 
-## 覆盖层
-- **进度条当前章高亮要切在章节卡起始帧**——第二片写过这条教训，模板里却还是切在首句帧（C1/C2/C3/C4 四个 QC 都报了）。这次真的改进了 `ProgressBar.tsx`（按上一章末句 to+3）。
-- 片头 tagline 42 字符在 77 帧片头里只满态 13 帧读不完：提前到 a+28，并加了**片尾署名卡 `EndCredit`**（内容压黑 + 末句字幕结束之后才出，aboveBar 层，满态 ≈56 帧）。片尾进度条不能在画面全黑后孤悬 2 s：`EndingTop` 改成随 `endingFade` 同步压黑。
-- 署名卡起点必须 > 末句字幕的 `to`（第一版 9090 起时与末字幕、末镜头残影重叠 20 帧），黑尾从 40 帧让到 26 帧换可读时间。
+## Ending blackout versus the final subtitle block: calculate it, and calculate it twice
+- The lessons already noted that an ending blackout can eat the closing action of the last shot. This video hit an escalated version: the **whole-video conclusion in large type had only 6 fully visible frames (0.20 s)**.
+- Three things combined to cause it: the last subtitle block started at f7067, a `GlitchIn` of 12 frames (**7 of those frames the text is off**), and the blackout started at f7085 and ate the brightness. In the 18-frame window, only 6 frames were readable.
+- **Criterion:** `(S_last.to − endingFade) − last subtitle start frame ≥ 30 frames`. Otherwise the conclusion cannot be read in full. Half of `GlitchIn`'s 12 frames are "off", so **the effective readable time is only half the window**. When a glitch is used for closing large type, budget double.
+- The fix in this video: the **whole conclusion sentence** enters once, moved earlier to the second-to-last beat (f7043). The final beat now carries a noticeable change through motion (the light-ring ripple densifies, the soft light pulses, and the outline fades in). **The moved frame must not land on a white-flash frame.** QC found that my first proposal, f7040, was exactly the first frame of a white flash from a camera move. A glitch placed there would read as "the glitch is broken". I moved it to f7043.
+- At dispatch, make this table for the last shot: last subtitle-block start frame, blackout start frame, whether a white flash falls in between, and the effective readable frames of the glitch.
 
-## 多 agent（本片）
-- 13 个其它会话开着，按 4 个一波派 9 个组 + 4 个 QC + 4 个修复全程没撞 pane 上限；每个 agent 完成即 `TaskStop`。
-- 一个构建 agent 被 ENOTFOUND 打死在 SC02 后，磁盘上其实已写到 SC06——**先看磁盘再决定重派还是唤醒**，一条 SendMessage 就醒了。
-- 构建组最有价值的回报仍是"分镜表本身的错"：坐标越界 / 承接与归零矛盾 / 胶囊装不下文字 / 出处小字字号 20 / 节拍与运镜冲突……本片 9 组共报 40 余条，几乎全部批准。分镜表写坐标时**按字宽估算一次**（`textW`）能省一半。
-- `test_render.sh` 的 mktemp 模板带点（`.XXXXXX`）被 Remotion 当扩展名拒绝——一分钟片的 lessons 写过，模板没改；这次改了。**写进 lessons 的模板 bug 要当场改模板。**
+## Scaling a transform also shrinks the type
+- The ten action capsules in SC34/SC39 used `scale(0.72)` for a carry-shift. Their 26px text became **18.7px**, below the 22px minimum. QC did not catch it from pixels (it measured ink height, and 18.7px CJK ink is about 14px, so it could be mistaken for a small label). Build group G7 calculated it and reported it.
+- **General rule: anywhere a whole group uses `scale` or `transform`, multiply every font size inside by the scale factor and check against the 22px floor.** The fix is to change the source size (26→31, and 31×0.72 = 22.3), not the scale.
 
-## 终检与收尾（第四片补充）
-- **终检"漏闪"要看帧再定**：终检员用固定框量 SC39「FlashMLA」名字亮度得到单调曲线，判为漏闪；实际卡片在上滑，名字在 7027 / 7029 两帧确实全灭——固定框量运动中的元素会把闪烁抹平。主会话渲 4 张 still 就否掉了这条，比派修复省得多。**运动中的元素做闪烁检测要跟随 bbox。**
-- **HUD 换词不能只靠 SoftIn**：单个条目切换时旧词硬切 + 新胶囊从 25% 重来 = 1 帧空白。模板 `Hud` 现在同章换词胶囊常驻、宽度 10 帧过渡、旧词 6 帧淡出、新词 SoftIn；章首（章节卡后）仍走 SoftIn。
-- **组级 motion_check 过了 ≠ 成片过**（见上），所以流程里成片复测必须做；这次 v1→v2 因此多了一轮修复，但 v2 复验 40/40 已修、v3 只剩 4 条低项小修，两轮 QC 收口。
-- 收尾顺序：v2 复验 + 终检并行（3 个 agent）→ 主会话自己做 v3 小修（都是一行改动，不值得再派）→ 渲 v3 → 主会话只对改动帧做数值抽检（HUD 行均值 / 底边行号 / 帧亮度）而不再派 QC。
+## Split layouts: the left and right halves must truly be the same camera
+- This video's main layout was "left top-down floor plan plus right viewfinder frame". In version 1, the floor plan drew the door on the **left wall**, but the door in the viewfinder was on the **back wall**. The two halves contradicted each other, and the floor plan's view cone didn't include the door at all. QC spotted it immediately.
+- Cause: `roomAnchors()` was illustrative coordinates I wrote to make the floor plan look good, while `SCENE` used world geometry, and the two were never aligned. **Fix: derive the door position on the floor plan from `SCENE`** (the world x=−245 normalized within x∈[−440,440] gives 0.2216). The door is drawn on the upper wall.
+- The cost must be acknowledged: **making the floor plan a strict projection of `SCENE` would move every camera angle that the groups had already tuned.** This video made only the low-risk half of the change (corrected door position and a smaller envelope). The rest (camera orientation, view-cone angle, room proportions) was recorded in the delivery notes as "the diagram is not a strict projection". **Changes like this either get done before dispatch, or the diagram is admitted to be illustrative.**
+- The same kind of inconsistency with a graphic's color across groups belongs in this category. The default `FovCone` color was purple. G5 explicitly passed grey, while G6 used the default. As a result, the upper and lower view cones in chapter 3 had different colors, which was a main cause of the "≥8 purple fragments" QC failure. **Defaults must follow the style rules (supporting elements do not glow, so the default is neutral grey). Do not let whether a parameter is passed decide the style.**
+
+## Think through where the camera will turn in the room's geometry
+- `SCENE` at first had only a back wall, extending only to x=±440, with no side walls. As a result, **at large pan angles (|yaw| ≳ 8°), during orbits and during sideways moves, the leading edge of the frame showed pure black on screen.** G3 had to reduce the pan endpoint from +42° to +22°. G4 had to reduce the yaw difference between two frames in SC19 from 60° to 26°. G6's SC32 needed a 55° orbit (at θ=55°, the back wall's right edge reached only 61% of the frame, and 39% was empty).
+- Adding two side walls (drawn segment by segment, with per-segment visibility, so a push-in past the side wall degrades gracefully) fixed three groups at once. **The side walls' perspective convergence lines turned out to be the best evidence for "sideways moves have parallax" and "the background is pulled away alone".** G5 and G6 both reported that the effect improved on their own initiative.
+- General rule: **design the scene geometry for the most extreme camera move, not for how the default camera position looks.** Before dispatch, list every camera move's angles and displacements, and ask: "at this angle, what does each edge of the frame show?"
+
+## Multi-agent (this video)
+- **The pane limit was hit again, earlier this time:** 14 other sessions were open on this machine, and the **fifth** agent I dispatched hit `respawn pane failed: fork failed: Device not configured`. (In the previous video it was the eighth.) **Fix: dispatch in waves of four. Wait for a wave to finish and TaskStop it to free panes before dispatching the next wave.** Run `ListAgents` before dispatching to see machine-wide usage.
+- **Two QC agents were killed by API errors** ("The response stopped arriving", ENOTFOUND). A `SendMessage` woke both, and they finished. **But waking them only preserved what had already been written to disk.** That is why "append as you go" is a hard requirement and not a suggestion. In this video, one QC agent ran for 46 minutes at 0 bytes. I had to prompt it once before it started writing. If it had died first, everything would have been lost.
+- **Quantitative QC checks are worth far more than "looks OK" from viewing the images.** The most valuable QC outputs in this video were two sets of pixel readings (SC37's 275/275px and 197/158px, and SC38's constant 164px and 0.711×). They turned "the claim holds" from a judgment call into evidence that can be checked, and they went straight into the delivery notes. When dispatching QC, **name the specific readings you want.**
+- **QC can correct the main session's proposed fix.** For SC50, my fix direction was right, but QC measured that the landing frame f7040 sat on a white-flash frame, and that the `CamIcon`'s entry path crossed the conclusion line. QC returned a corrected three-line version that was more complete than my original. **Before dispatching a fix, have QC check your own proposed fix first.**
+- **The static check I wrote for the main session (`scripts/selfcheck.py`) is worth keeping in every video.** It checks frame coverage (50 consecutive shots with no gaps, reconciled against the storyboard's frame ranges), counts the glitch allow-list at source level, and reconciles on-screen literals against the fact list. It runs in seconds, and it catches what QC cannot see from pixels, such as the words `Danny`, `Jack`, `MOVE` and `Dolly`, which were not on the fact list. **Write the noise filter carefully** (filter out import paths, CSS values, camelCase identifiers). Otherwise it produces a flood of false positives that nobody reads.
+
+---
+# One-minute 《Agentic RL》 (2026-09-09): new lessons
+- Newer versions of edge-tts's Communicate may default to SentenceBoundary, while the old tts_build.py accepted only WordBoundary. That silently left an empty list and fell back to estimating subtitles by character count. Pass `boundary="WordBoundary"` explicitly. When a cache hit occurs, check that word boundaries are non-empty. Without them, stop rather than falsely reporting precise sync.
+- In a short video with a reduced CHAPTER_GAP, the HUD's rule "an interval under 30 frames means the same chapter" covered the previous chapter's capsule over the next chapter's card. Compare chapters per sentence instead of guessing from the interval. The progress-bar highlight should match the chapter card's start.
+- An opening of only 40 frames needs its motion budget re-planned. The defaults for a long opening (glitch, subtitle subline, dolly) crowded together. This video ended up with three lines that each fade in over 6 frames, followed by a 33-frame eased slow push. Do not force a glitch into the opening.
+- A test-render directory created by `mktemp` with a dotted suffix (`.XXXXXX`) can be rejected by Remotion 4.0.507 as an output extension. A dotless name like `explainer_test_TAG_XXXXXX` correctly outputs image sequences.
+- For graphic halos and labels, look at enlarged frames. A contact sheet alone misses detail, such as a white ring touching white text. In this video, a chip label with a halo was moved down 25px to fix the ring running through the text.
+
+---
+# Fourth video, 《The AI Systems Performance Engineer》 (2026-09-10, English, 48 shots / 5′07″, 9 groups, one QC round, high 0): new lessons
+
+## English speaking rate and pronunciation
+- **kokoro `am_liam` at speed 1.0 measured ≈2.3 words/second (prose 2.25, dense abbreviation sentences 1.4–1.8), not edge-tts's 2.96.** A 5-minute English video is about 640 words and 48 sentences. Writing to the 700+ words in the SKILL.md table would run to 6′17″. On the first run, synthesize the full script and look at the `speech=` reading before adjusting the length (this video cut 733 words down to 642 that way).
+- kokoro reads CUDA, NIXL, MIG and DeepGEMM letter by letter, and reads v5.0 as "v five zero". The `[word](/phonemes/)` override syntax works. It is now a `PRONOUNCE` table in `tts_build.py` (it only changes the text sent to TTS, and the subtitles are unchanged). When dispatching the researcher, have it list all the abbreviations. Before synthesis, dump the phonemes (the `ps` returned by `KPipeline`) to check them.
+- **Noto Sans SC's curly quotes “ ” and the ellipsis … are full-width 1em glyphs**, which leave a large gap in English text. On screen, always use straight quotes (found by G9).
+- The default `textDy` of `Pill` is −2, a Chinese baseline compensation. English videos use `TEXT_DY` instead. The template has been updated.
+
+## "Still after entering" is a defect: verb-driven continuous motion
+- The user's first reaction to the 30-second sample was not about the style. It was "can you describe this passage with richer motion?" Measured: 4 of 6 shots had still-frame shares of 42–72%, and the longest still stretch was 2.8 s. The highlight of SC04 was clearly better because it was moving the whole time. **The sample RAG video has the same problem, so "match the sample" does not catch it.**
+- Rule (user decision, in the global constraints §9 of the storyboard): each subtitle block's verb has an action that continues until the next beat. No element may stay completely still for more than 30 frames after entering. A shot without another camera move gets a slow 1.0→1.05 push-in. The boundaries do not change: one protagonist, one glitch, no debris. Measurement: sample the content area at 320×180 and average the per-frame grayscale change. Under 0.35 counts as a still frame. Still share must be ≤40%, and the longest still ≤1 s (`scripts/motion_check.py`, now in the template).
+- **Group-level detection (low-resolution `--scale` rendering) is too loose. The final-cut fin_frames re-check is the criterion.** Version 1 passed 48/48 at group level, but the re-check on the final cut found 11 shots over the limit: 3 true stills, and 8 with only small-area motion (data packets, cursors). The group-level render was changed to 0.5× with JPEG q80. The `--frames` mode now also reports "changed full-resolution pixels within the longest still run", which separates true stills (under 800) from small-area motion. The fix for small-area motion is **to increase the amplitude** (make moving elements brighter, larger and denser, and breathe the protagonist itself ±2% over 30 frames), not to add elements.
+- A slow push of 1.05 barely contributes to 320×180 sampling. It is a constant background motion for the viewer, not something the metric is meant to read.
+
+## Shared layer: put what groups need into ui.tsx before dispatch
+- Before dispatching G1, this video rendered eight topic graphics as a probe (GPUChip, TimelineBar, Gauge, ClusterGrid, RackIcon, PersonIcon, CodeCard, RepoCard) and reviewed them in one frame. Rework: zero. The running example `ProfilerPanel` (plus its row-data constants) was put into ui.tsx before G3 and G4 were dispatched, so both groups import it directly. Later, a shared **cursor** and `glowIdleK` were added, so "the same thing" was guaranteed.
+- **Tools the protocol mentions must exist in the shared layer** (the lesson from the third video, repeated): G1 again wrote its own softOp, exitOp, glowOffK, mixHex, GlowBlob and Vignette. Before dispatching G2, the main session moved them up into the shared layer and recorded that in dispatch_notes §0. After that, no group duplicated them. But camZoomAbout, ArrowPulse, LLMIconLive and FilmPanel were still each written once by three or four groups. **Move them into the template before the next video starts.**
+- `mixHex` returns `rgb()`. Feeding that back into `mixHex` gives `rgb(NaN)` with no error (G8's card edges and fork outlines disappeared, and G9's five capsule borders did not render). Either accept rgb() input or provide a version that returns #hex.
+- The idle orange glow box-shadow of `TimelineBar` is clipped if drawn inside an `overflow:hidden` container (G4 found this). Glowing children must be drawn outside the clipping container. `TiltPlane`'s children are squashed by scaleY .5, so text and icons on the plane must be placed upright on the surface (G5).
+- A `Vignette` top band starting at y0 darkens the HUD capsules (three groups found this independently). A bottom band reaching 720 darkens the progress bar through its semi-transparent body. The template has been changed to y100–200 and 560–687.
+- The type size in `CodeCard`'s tag was 16px, below the 22px floor. Four groups used it before QC caught it. **Type sizes in shared graphics must also pass the 22px floor.**
+
+## Camera moves and the safe area
+- During a 1.05 slow push around (640,360), content must fall within **x 89–1191 and y 122–607**. For 1.25–1.3 push-ins, scale the bounds accordingly. For layouts that fill the width edge to edge (the profiler panel at x190–1090), skip the slow push. In a carry-shift, capsules must not scale with the group (their type would drop below 22px or they would become overly wide). Interpolate their geometry independently.
+- **A camera move should end before the beat, not start on it** (G2's SC09 moved its group pan from 1616–1642 to 1590–1616 so the label landed exactly on the beat). "No new elements during a camera move" only constrains new elements outside the camera layer. Capsules that move with the rigid body may SoftIn during the pan (G4's SC20 QC medium finding was that this wasn't done).
+- Slow pushes for two adjacent shots must be continuous (SC12 1.0→1.02, SC13 1.02→1.05, SC14 starting from 1.05 and pushing in). Otherwise the boundary frame jumps.
+
+## Overlay
+- **The current-chapter highlight on the progress bar must switch on the chapter card's start frame.** The third video recorded this lesson, but the template still switched on the first sentence's frame (all four chapter QC reports flagged it). This time, `ProgressBar.tsx` was really changed (it now uses the previous chapter's last sentence to+3).
+- The opening's tagline has 42 characters, and in a 77-frame opening it was fully readable for only 13 frames. It was moved earlier to a+28, and a closing credit card `EndCredit` was added (the content goes black, and the card appears after the final subtitle line ends; it sits on the aboveBar layer and is fully visible for about 56 frames). The progress bar must not hang alone for 2 seconds after the picture goes black at the end. `EndingTop` now darkens in sync with `endingFade`.
+- The credit card's start frame must be later than the final subtitle's `to` (in the first version, it began at 9090, overlapping the last subtitle and the final shot's trailing frames for 20 frames). Shortening the black tail from 40 frames to 26 gave more readable time.
+
+## Multi-agent (this video)
+- 13 other sessions were open. Dispatching in waves of four, the nine groups plus four QC agents plus four fix agents ran with no pane-limit problems. Each agent got TaskStop as it finished.
+- One build agent was killed by ENOTFOUND after SC02, but the disk already had work up to SC06. **Check the disk before deciding whether to redispatch or wake the agent.** One SendMessage woke it.
+- The most valuable build-group feedback was still "the storyboard itself is wrong": coordinates out of bounds, carry-over conflicting with exit-to-zero, capsules too small for their text, source small print at 20px, beats conflicting with camera moves, and so on. Across nine groups, the reports came to more than 40 items, and almost all were approved. **When writing coordinates in the storyboard, estimate text width once (`textW`) before writing them.** That saves half the rework.
+- `test_render.sh`'s mktemp template had a dot (`.XXXXXX`), which Remotion rejected as an extension. The one-minute video's lessons had already recorded this, but the template had not been fixed. This time it was. **When a template bug is recorded in lessons, fix the template at that point.**
+
+## Final checks and wrap-up (fourth video addendum)
+- **Before calling a missed glitch, look at frames.** A final checker measured the name "FlashMLA" on SC39 at a fixed box and got a monotonic brightness curve, which it judged as a missed flicker. In fact, the card was sliding up, and the name was fully dark on frames 7027 and 7029. A fixed box measuring a moving element flattens the flicker. The main session rendered four stills, which disproved the finding without dispatching a fix. **For flicker detection on moving elements, follow the bounding box.**
+- **The HUD term change cannot rely on SoftIn alone.** When a single item changed, the old term cut hard and the new capsule started again from 25%, which made one blank frame. The template `Hud` now keeps the capsule constant for same-chapter term changes, with a 10-frame width transition. The old term fades out over 6 frames, and the new term SoftIns in. The first term after a chapter card still uses SoftIn.
+- **Passing the group-level motion_check does not mean the final cut passes** (see above). So the final-cut re-check must be done as part of the workflow. This video added one fix round as a result. V2's re-verification found 40/40 fixed, and V3 had only four low-priority items left, a minor fix. Two QC rounds closed it out.
+- Closing sequence: run v2 re-verification and the final check in parallel (three agents). The main session makes the v3 minor fixes itself (each is one-line, not worth dispatching). Render v3. The main session then checks only the changed frames numerically (HUD line averages, bottom-edge line numbers, frame brightness) and does not dispatch QC again.

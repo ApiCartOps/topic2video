@@ -8,8 +8,6 @@ Turn any technical or science topic into a narrated motion-graphics explainer vi
 
 Give it a topic (or an article) and it produces an original explainer video in **Chinese or English**: black canvas, star-field or dot-field backdrop, white line graphics with purple emphasis, TTS voiceover, subtitles, and a chapter progress bar. Every frame is drawn with [Remotion](https://www.remotion.dev/) (React), so the video is reproducible and editable as source.
 
-中文简介：给一个主题，产出一条黑底 MG 风格、有配音字幕和章节进度条的科普讲解视频（中文或英文，时长由你定，常用 3–5 分钟）。
-
 This repository is a **Claude Code skill** (`SKILL.md`) plus the reference docs, agent protocols, and a compilable Remotion project template it uses.
 
 ## What is in the repo
@@ -19,7 +17,7 @@ This repository is a **Claude Code skill** (`SKILL.md`) plus the reference docs,
 | `SKILL.md` | Entry point for the skill: hard rules, four user confirmation points, eight-stage workflow, file index |
 | `template/` | Compilable Remotion 4 project: common motion library, UI primitives, chapter/HUD/overlay components, fonts (OFL), and scripts for TTS, storyboard rendering, stills, previews, renders and checks |
 | `reference/` | Style guide, motion vocabulary, composition and lighting rules, narration/storyboard format, research brief, agent prompts and build/QC protocols, lessons learned |
-| `examples/rag/` | A complete sample video, *RAG 与知识库* (4′35″): research, narration, storyboard, per-shot source code, QC reports and frames. Use it as the quality benchmark |
+| `examples/rag/` | A complete sample video, *RAG and Knowledge Bases* (4′35″, Chinese narration): research, narration, storyboard, per-shot source code, QC reports and frames. Use it as the quality benchmark |
 | `examples/contrast/` | Before/after frame pairs showing composition and lighting rules in practice |
 
 ## Requirements
@@ -47,7 +45,7 @@ npm run studio            # open the Remotion studio for preview
 
 ## Credits and third-party components
 
-- **Visual inspiration**: the look is inspired by the Douyin account 图灵宇宙. All frames are drawn in code; no footage or frames from other videos are used.
+- **Visual inspiration**: the look is inspired by the Douyin account "图灵宇宙" (Turing Universe). All frames are drawn in code; no footage or frames from other videos are used.
 - **Fonts**: Noto Sans SC, Orbitron, Exo 2 and Audiowide, all under the SIL Open Font License 1.1. See [`template/public/fonts/LICENSE.md`](template/public/fonts/LICENSE.md).
 - **Rendering**: [Remotion](https://www.remotion.dev/). Remotion is under its own license, not an OSI-approved one. Its terms require a company license for some commercial use, so check them before using it in a business.
 - **Voices**: the default Chinese voice uses `edge-tts`, which calls Microsoft's online speech service and is subject to its terms. The default English voice uses `kokoro-82m`, which is Apache-2.0. You can also supply your own audio file.

@@ -1,7 +1,7 @@
 import React from 'react';
 import type {StarVariant, StarFieldProps} from './StarField';
-/** 镜头定义：from/to 为原片帧号（1 起，含端点），Main 用 <Sequence from={from-1} durationInFrames={to-from+1}> 挂载。 */
-/** layer:'aboveBar' → Main 把该镜头挂在进度条之上、字幕之下（原片部分镜头的内容层压在半透明进度条之上，如 SC019.p1-b 自 y720 升起的元素；默认在进度条之下被条体提亮）。 */
+/** Shot definition: from/to are original-footage frame numbers (starting at 1, inclusive). Main mounts it with <Sequence from={from-1} durationInFrames={to-from+1}>. */
+/** layer:'aboveBar' → Main mounts the shot above the progress bar and below the subtitles. Some shots in the original have content layered over the semi-transparent progress bar, such as the element that rises from y720 in SC019.p1-b. By default, shots sit below the bar, which brightens it. */
 export type ShotDef = {id: string; from: number; to: number; Comp: React.FC; layer?: 'aboveBar'};
-/** 背景常驻层覆写（按原片帧区间）：stars 选星点 variant 或细调参数（'none' 关掉），fog 关/开雾底。未覆写区间用全局默认（drift + 雾底开）。 */
+/** Backdrop override (by original-footage frame range): stars selects a star variant or fine-tuning parameters ('none' turns them off), and fog turns the fog off or on. Ranges without an override use the global default (drift, fog on). */
 export type BgSpec = {from: number; to: number; stars?: StarVariant | Partial<StarFieldProps>; fog?: boolean};

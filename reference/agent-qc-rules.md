@@ -1,31 +1,32 @@
-# 成片 QC 协议（原创片：对照分镜表与风格指南，不是对照原片）
+# Final-cut QC protocol (original work: checked against the storyboard and style guide, not against any source video)
 
-> <项目根> 替换为工作目录绝对路径；vN 为版本号；Cn 为章号。
+> Replace <project-root> with the absolute path of the working directory. vN is the version number. Cn is the chapter number.
 
-输入：成片逐帧 `<项目根>/fin_frames/f_%04d.jpg`（1 起）、缩略总表 `<项目根>/renders/sheet_vN.html`、`<项目根>/分镜表.md`（帧区间/节拍/画面意图）、`<项目根>/script/timeline.md`（字幕块帧号）、skill 的 `reference/style-guide.md` 与 `reference/motion-vocabulary.md`、`<项目根>/research/调研.md`、各组 `<项目根>/src/shots/Gn/BUILD_NOTES.md`（已知降级项，不重复报）。
-输出：`<项目根>/qc/qc_vN_Cn.md`，**边查边 append**。每条：`| 严重度 高/中/低 | 镜头 | 帧 | 现象 | 判据 | 建议修法 |`。
+Inputs: the final cut frame by frame, `<project-root>/fin_frames/f_%04d.jpg` (starting at 1). The contact sheet, `<project-root>/renders/sheet_vN.html`. The storyboard, `<project-root>/分镜表.md` (frame ranges, beats, intent). `<project-root>/script/timeline.md` (subtitle block frames). The skill's `reference/style-guide.md` and `reference/motion-vocabulary.md`. `<project-root>/research/调研.md`. Each group's `<project-root>/src/shots/Gn/BUILD_NOTES.md` (known downgrades, not reported again).
+Output: `<project-root>/qc/qc_vN_Cn.md`, **appended as you go**. Each row: `| severity high/medium/low | shot | frame | observation | criterion | suggested fix |`.
 
-> 英文片（`config.ts` 的 `lang: 'en'`）另加两条：字幕折成两行（说明该块超 48 字符预算，已压进内容区）→ 中；进度条章名或章节卡标题被自动缩字号到发虚 → 低，回去把章名改短。
+> English video (`lang: 'en'` in config.ts) adds two checks: a subtitle that wraps onto two lines (the block exceeds the 48-character budget and was squeezed into the content area) → medium. A chapter title or chapter-card title auto-shrunk until blurry → low; shorten the title instead.
 
-## 看什么（按优先级）
-1. **可读性/遮挡**：任何文字被字幕带（y637–690）、进度条（y687–720）、HUD（y28–100）、流程轨（第 2、3 章 y112–160）遮住或紧贴（<10px）；文字溢出画布；字号 <22px；白字压在白/浅色块上；灰字在雾底上不可读。
-2. **节拍**：关键元素出现帧 vs 对应字幕块起始帧（timeline.md）：晚 >3 帧或早 >6 帧记中；整句没有对应画面变化记高。检查方法：看字幕块起始帧 −6、0、+3、+8 四张帧。
-3. **事实/拼写**：画面英文与数字逐个核对调研文档；错字/繁简混用/术语不一致（同一概念两组写法不同）记中。
-4. **风格一致**：颜色不在调色板（非紫/橙红/灰/白/绿勾）、字体不对（中文非 Noto、英文技术词非 Exo 2 斜体）、描边粗细（2–3px）、圆角风格、glitch 入场缺失或过度（>12 帧闪烁）、不透明黑底盖掉幕底（大面积纯黑、无星点 / 点阵）。
-5. **衔接**：相邻镜头交界帧（分镜表每行 from/to）：前后两帧是否有元素突然消失/跳位/重复绘制；组界（G1|G2 …）尤其看 HUD/流程轨与内容是否重叠；章节卡前是否有内容残留。
-6. **动画质量**：抽每镜头 3 处连续 3 帧（入场中段/中间/离场中段）看是否有抖动、方向反、缓动生硬（线性大位移）、元素从画外"闪现"（首帧就在终点）、kf 首值陷阱（镜头一开始就停在中段状态）。
-7. **性能痕迹**：模糊/发光过度导致的灰雾、渐变色带、文本边缘锯齿。
-8. **构图与光**（`composition-and-light.md` §6）：先跑 `python3 <项目根>/scripts/frame_metrics.py --frames <项目根>/fin_frames --storyboard <项目根>/分镜表.md --out <项目根>/qc/frame_metrics_vN.md`，把本章镜头的标记逐条并入报告并看帧确认：内容区主体尺度 <110px 且无大面积光活动持续 >45 帧 → 中（<80px → 高；扫光 / 光线阶段不算空场）；主体中位尺度 <170 → 低；高光时刻镜头主角区无柔光斑 → 中；一帧紫色碎片 ≥8 → 低；背景散落小图形 ≥10 → 中（点云 / 方点阵列会误触发，看帧确认是整齐矩阵还是随机碎屑）。
-9. **持续动作**（composition-and-light.md §7）：先跑 `python3 <项目根>/scripts/motion_check.py --frames <项目根>/fin_frames`；静止 >40% 或最长静止 >1 s 的镜头看帧：全分辩率变化像素 <800 = 真静 → 中（给出可加的动作）；800–2500 = 小面积动作 → 低（建议加大幅度）。
-10. **运镜**：对照分镜表「运镜清单」逐条看首 / 中 / 末帧：推近是否绕主角、是否 30–45 帧 easeInOut（线性或 <15 帧记中）、运镜期间有没有 glitch 或错峰入场（记中）、HUD / 流程轨 / 字幕是否被带着动（记高）；一章少于 3 次运镜记低。
+## What to check (in priority order)
+1. **Legibility and occlusion:** any text covered by or within 10px of the subtitle band (y637–690), progress bar (y687–720), HUD (y28–100), or flow track (chapters 2 and 3, y112–160). Text overflowing the canvas. Type under 22px. White text on white or light blocks. Grey text on fog that can't be read.
+2. **Beats:** compare each key element's appearance frame with the start frame of its subtitle block in timeline.md. Late by more than 3 frames, or early by more than 6, is medium. A whole sentence with no visual change is high. Method: look at frames −6, 0, +3 and +8 relative to the block start.
+3. **Facts and spelling:** check every English word and number on screen against the research document. Typos, mixed traditional and simplified characters, or inconsistent terms (the same concept written two ways in different groups) are medium.
+4. **Style consistency:** colors outside the palette (anything other than purple, orange-red, grey, white or the green check), wrong fonts (Chinese not in Noto, English technical terms not in italic Exo 2), outline thickness (2–3px), corner-radius style, missing or excessive glitch entry (over 12 frames of flicker), and an opaque black area covering the backdrop (large pure-black areas with no stars or dots).
+5. **Continuity:** at the boundary frames between shots (each row's from/to in the storyboard), check whether elements suddenly vanish, jump or are drawn twice. At group boundaries (G1|G2 …) look especially at whether the HUD or flow track overlaps content, and check for leftover content before chapter cards.
+6. **Animation quality:** for each shot, sample 3 runs of 3 consecutive frames (mid-entry, middle, mid-exit). Look for jitter, reversed direction, harsh easing (large linear moves), elements appearing from off-screen (already at the end position on the first frame), and the keyframe first-value trap (a shot starting in a mid-state).
+7. **Performance artifacts:** fog from over-blur or over-glow, gradient banding, aliased text edges.
+8. **Composition and light** (composition-and-light.md §6). First run `python3 <project-root>/scripts/frame_metrics.py --frames <project-root>/fin_frames --storyboard <project-root>/分镜表.md --out <project-root>/qc/frame_metrics_vN.md`, merge this chapter's flags into your report one by one, and check the frames to confirm. Content-area protagonist under 110px with no large light activity for more than 45 frames → medium (under 80px → high; light-sweep and light-stage sections are not counted as empty). Median protagonist size under 170 → low. Highlight-moment shots with no soft light spot in the protagonist area → medium. Ordinary shots with under 800px² of soft light in the protagonist area → low (unlit protagonist). Eight or more separate purple patches in one frame (purple fragment index) → low, meaning purple is spread across supporting elements. Ten or more background shapes under 60px (not stars or the backdrop dots) → medium (debris). A tidy dot cloud or grid of squares (vector spaces, exposure walls) also trips this rule. That is an allowed design. QC checks the frame: a regular arrangement lit on the beat is a matrix; randomly scattered small icons are debris.
+9. **Continuous motion** (composition-and-light.md §7). First run `python3 <project-root>/scripts/motion_check.py --frames <project-root>/fin_frames`. For shots with still share over 40% or longest still over 1 s, check the frames. Under 800 changed full-resolution pixels = true still → medium, and suggest the motion to add. 800–2500 = small-area motion → low, and suggest bigger motion.
+10. **Camera moves:** check the camera-move list in the storyboard item by item at first, middle and last frames. Does the push-in orbit the protagonist? Is it 30–45 frames of easeInOut (linear, or under 15 frames → medium)? Does any GlitchIn or staggered entry run during a move (medium)? Do HUD, flow track or subtitles move with the camera (high)? A chapter with fewer than 3 camera moves → low.
 
-## 怎么看
-- 先看 `sheet_vN.html` 通读全片一遍（每 60 帧一张），列出可疑镜头；再对每个镜头按分镜表逐"节拍帧"看单帧；最后按 §5/§6 看连续帧。
-- 用 Read 看图；需要量化（bbox/颜色/亮度）用 Python PIL（亮度求和用 int32，int16 会溢出）。不要修改任何源码。
-- 闪烁合规（终检）：对每个镜头元素入场帧做 f0…f0+12 亮度曲线，0/0.5/1 跳变 = 闪烁；命中数必须等于白名单条数。
-- 每个镜头至少给出一行结论（"OK"也要写），保证覆盖。
+## How to review
+- First look at `sheet_vN.html` to scan the whole video (one frame per 60), and list suspicious shots. Then check each shot's beat frames one by one against the storyboard. Finally check consecutive frames as in §5 and §6.
+- Use Read to view images. For measurements (bounding boxes, colors, brightness), use Python PIL. Sum brightness as int32, since int16 overflows.
+- Do not modify any source code.
+- Glitch compliance (final check): for each shot's entering elements, plot brightness from f0 to f0+12. Jumps between 0, 0.5 and 1 count as a glitch. The number of hits must equal the number of allow-list entries.
+- Every shot gets at least one line of conclusion, even if it's "OK", so coverage is complete.
 
-## 严重度
-- 高：文字不可读/遮挡、整句无画面、事实错误、组件缺失（分镜表有而画面没有）、黑底盖幕底、空场（主体 <80px 持续 >45 帧）、运镜带动 HUD / 字幕。
-- 中：节拍偏差、样式不一致、衔接跳变、拼写、主体 <110px 持续 >45 帧、高光时刻主角无光、背景碎屑、运镜生硬或与 glitch 重叠。
-- 低：微调（间距/对齐/亮度）、可选优化。
+## Severity
+- High: illegible or occluded text, a whole sentence with no visual, a factual error, a missing component (in the storyboard but not on screen), an opaque black area covering the backdrop, empty frames (protagonist under 80px for more than 45 frames), camera moves dragging the HUD or subtitles.
+- Medium: beat deviation, inconsistent style, continuity jumps, spelling, protagonist under 110px for more than 45 frames, highlight-moment protagonist unlit, background debris, camera moves that are abrupt or overlap a glitch.
+- Low: small adjustments (spacing, alignment, brightness) and optional improvements.

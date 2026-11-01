@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""把 script/storyboard_src.md 中的时间令牌替换成 script/timeline.json 里的帧号，输出 项目根/分镜表.md。
-令牌：{S12.from} {S12.to} {S12.c3}（第 3 个字幕块起始帧）{C2}（第 2 章起始帧）{TOTAL}；均可带 ±整数：{S12.from-8}"""
+"""Replaces the time tokens in script/storyboard_src.md with frame numbers from script/timeline.json, and writes the result to <project-root>/分镜表.md (the storyboard table).
+Tokens: {S12.from} {S12.to} {S12.c3} (start frame of the third subtitle chunk) {C2} (start frame of chapter 2) {TOTAL}. Each can take an integer offset, such as {S12.from-8}."""
 import json, re, sys, os
-here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # 项目根
+here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # project root
 tl = json.load(open(f'{here}/script/timeline.json'))
 S = {s['id']: s for s in tl['sentences']}
 C = {c['n']: c['from'] for c in tl['chapters']}

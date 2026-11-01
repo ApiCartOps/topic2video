@@ -3,16 +3,16 @@ import {useCurrentFrame, useVideoConfig} from 'remotion';
 import type {BgSpec} from './types';
 
 /**
- * 幕底方案二「点阵波」：video-talkcraft `template/motion-systems/backdrop.tsx` 的 dot-field-wave 移植版。
- * `src/config.ts` 的 `bg: 'dots'` 时由 Main 挂载，替换方案一的 雾底 Fog + 星点 StarField（两者不叠加）。
- * - 逐帧确定性：t = frame / fps × speed（talkcraft 默认 speed 1.5），斜向波前每 14 s 扫过一遍（÷speed ≈ 9.3 s）。
- * - 设计坐标 960×540 等比放大覆盖 1280×720：点距 36 → 屏幕 48px，半径 1.5–2 → 2–2.7px；底色 #0b0c11，点色 #cfe0ff，
- *   透明度 (0.2 + 0.6k²)·径向边缘衰减，k 为到波前的归一化距离；叠一层静态噪点（overlay .06）抗色带。
- * - 沿用 BgSpec：区间内 `stars:'none'` → 整层不画，回到纯黑（片头前 10 帧 / 片尾 40 帧与星点方案一致）；`fog` 字段在本方案下无效。
- * - 点阵是屏幕空间的静态纹理，不跟随任何镜头运镜；scripts/frame_metrics.py 会按同一套网格坐标把它从统计里抠掉（`bg` 自动读 config）。
+ * Backdrop option 2, "dot wave": a port of the dot-field-wave from video-talkcraft `template/motion-systems/backdrop.tsx`.
+ * Main mounts it when `bg: 'dots'` is set in `src/config.ts`. It replaces option 1, the fog Fog plus star field StarField (the two never stack).
+ * - Deterministic frame by frame: t = frame / fps × speed (talkcraft's default speed is 1.5). A diagonal wavefront sweeps across every 14 s (÷speed ≈ 9.3 s).
+ * - Scaled uniformly from a 960×540 design grid to cover 1280×720: dot spacing 36 → 48px on screen, radius 1.5–2 → 2–2.7px. Base color #0b0c11, dot color #cfe0ff.
+ *   Opacity (0.2 + 0.6k²) × radial edge falloff, where k is the normalized distance to the wavefront. A static noise layer (overlay .06) prevents color banding.
+ * - Follows BgSpec: inside a range, `stars:'none'` skips the whole layer and returns to pure black (matches the star option: 10 frames before the opening, 40 frames before the closing). The `fog` field has no effect with this option.
+ * - The dots are a static texture in screen space and do not follow any camera move. scripts/frame_metrics.py removes them from its measurements using the same grid coordinates (`bg` is read from the config automatically).
  */
 const DW = 960, DH = 540;
-export const DOT_STEP = 36, DOT_X0 = 24, DOT_Y0 = 18; // 设计坐标网格（frame_metrics.py 用同一组常量还原屏幕坐标）
+export const DOT_STEP = 36, DOT_X0 = 24, DOT_Y0 = 18; // design-grid origin and spacing (frame_metrics.py uses the same constants to recover screen coordinates)
 const GRAIN_URL =
   "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .5 0'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>\")";
 

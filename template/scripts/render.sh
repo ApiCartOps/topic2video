@@ -1,5 +1,5 @@
 #!/bin/zsh
-# 整片渲染：VER=v1 scripts/render.sh  → renders/<slug>_v1.mp4 + fin_frames/ + renders/sheet_v1.html
+# Full-length render: VER=v1 scripts/render.sh  → renders/<slug>_v1.mp4 + fin_frames/ + renders/sheet_v1.html
 set -e
 ROOT=$(cd "$(dirname "$0")/.." && pwd); cd "$ROOT"
 V=${VER:-v1}

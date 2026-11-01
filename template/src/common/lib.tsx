@@ -2,7 +2,7 @@ import React from 'react';
 import {AbsoluteFill, continueRender, delayRender, staticFile} from 'remotion';
 import {VIDEO} from '../config';
 
-// 画布与帧号约定：1280×720@30fps；帧号 N 从 1 起（N = useCurrentFrame() + F0，F0 = 镜头 ShotDef.from）。
+// Canvas and frame-number conventions: 1280×720 at 30 fps. Frame number N starts at 1 (N = useCurrentFrame() + F0, where F0 = the shot's ShotDef.from).
 export const W = 1280;
 export const H = 720;
 export const FPS = 30;
@@ -12,7 +12,7 @@ export const lerp = (t: number, t0: number, t1: number, v0: number, v1: number) 
   if (t1 === t0) return v1;
   return v0 + (v1 - v0) * clamp((t - t0) / (t1 - t0), 0, 1);
 };
-/** 分段线性关键帧 [frame, value][]。⚠ 首值陷阱：t < 首关键帧返回首值（不是 0）。 */
+/** Piecewise-linear keyframes [frame, value][]. ⚠ First-value trap: when t is before the first keyframe, it returns the first value (not 0). */
 export const keyframes = (t: number, kf: Array<[number, number]>) => {
   if (t <= kf[0][0]) return kf[0][1];
   for (let i = 1; i < kf.length; i++) if (t <= kf[i][0]) return lerp(t, kf[i - 1][0], kf[i][0], kf[i - 1][1], kf[i][1]);
@@ -24,7 +24,7 @@ export const stepHold = (t: number, kf: Array<[number, number]>) => {
   return 0;
 };
 
-// ---- 方向模糊（SVG feGaussianBlur，σ<0.8 在 Chromium 中无效；禁用 feConvolveMatrix）----
+// ---- directional blur (SVG feGaussianBlur. σ<0.8 does nothing in Chromium. feConvolveMatrix is banned) ----
 let blurSeq = 0;
 export const DirBlur: React.FC<{bx: number; by: number; style?: React.CSSProperties; children: React.ReactNode}> = ({bx, by, style, children}) => {
   const idRef = React.useRef<string | undefined>(undefined);
@@ -47,24 +47,24 @@ export const DirBlur: React.FC<{bx: number; by: number; style?: React.CSSPropert
   );
 };
 
-// ---- 字体（全部随模板附带，OFL 许可；Noto Sans SC 含完整拉丁字形，英文片同样用它做正文/字幕）----
-export const FONT_HEAVY = `'Noto Sans SC', 'PingFang SC', 'Hiragino Sans GB', sans-serif`; // 全部中文：标题 900（常 scaleX .8–.85 压窄）、标签 600–800、字幕 700
-export const FONT_TECH = `'Exo 2', 'Helvetica Neue', sans-serif`; // 英文技术词：紫色粗斜体 + scaleX .8
-export const FONT_WIDE = `'Audiowide', 'Orbitron', sans-serif`; // 宽体展示字（片名 / 大写缩写）
-export const FONT_ORB = `'Orbitron', 'Audiowide', sans-serif`; // 数字 / 章序号 / HUD 计数
-export const FONT_MONO = `'SF Mono', Menlo, Consolas, monospace`; // 代码 / 向量数字
-export const FONT_SERIF = `'Times New Roman', Times, serif`; // 公式
+// ---- fonts (all bundled with the template under the OFL license. Noto Sans SC includes the full Latin character set, so English videos use it for body text and subtitles too) ----
+export const FONT_HEAVY = `'Noto Sans SC', 'PingFang SC', 'Hiragino Sans GB', sans-serif`; // all Chinese text: titles at 900 (often narrowed with scaleX .8–.85), labels 600–800, subtitles 700
+export const FONT_TECH = `'Exo 2', 'Helvetica Neue', sans-serif`; // English technical terms: purple bold italic with scaleX .8
+export const FONT_WIDE = `'Audiowide', 'Orbitron', sans-serif`; // wide display type (video title, uppercase abbreviations)
+export const FONT_ORB = `'Orbitron', 'Audiowide', sans-serif`; // numbers, chapter numerals, HUD counters
+export const FONT_MONO = `'SF Mono', Menlo, Consolas, monospace`; // code and vector numbers
+export const FONT_SERIF = `'Times New Roman', Times, serif`; // formulas
 export const FONT_EN = `'Helvetica Neue', Helvetica, Arial, sans-serif`;
 
-// ---- 语言开关（src/config.ts 的 VIDEO.lang）----
-/** 'zh' 中文片（默认）｜'en' 英文片。影响：字体压窄系数、基线补偿、文案与字幕预算（见 reference/narration-storyboard.md §5）。 */
+// ---- language switch (VIDEO.lang in src/config.ts) ----
+/** 'zh' Chinese video (default) or 'en' English video. Affects font narrowing, baseline compensation, and copy and subtitle budgets (see reference/narration-storyboard.md §5). */
 export const LANG = VIDEO.lang ?? 'zh';
-/** 中文标题惯用 scaleX .8–.85 压窄；拉丁字母压窄会变形，英文片一律 1。 */
+/** Chinese titles are conventionally narrowed with scaleX .8–.85. Narrowing Latin letters distorts them, so English videos always use 1. */
 export const SQUEEZE = LANG === 'en' ? 1 : 0.85;
-/** CJK 行盒 ascent 让墨迹比 top 低 3–7px，居中要预扣；拉丁不需要。 */
+/** The CJK line box puts the ink 3–7px below the top, so centered text needs pre-compensation. Latin does not. */
 export const TEXT_DY = LANG === 'en' ? 0 : -2;
 
-/** 在 Main 顶层挂一次；用 delayRender 等字体就绪。 */
+/** Mounted once at the top of Main. Uses delayRender to wait until the fonts are ready. */
 export const Fonts: React.FC = () => {
   const [handle] = React.useState(() => delayRender('fonts'));
   React.useEffect(() => {

@@ -1,69 +1,68 @@
-# 构图与光（视觉驱动规则）
+# Composition and light (visual rules)
 
-> 这份文件回答"画多大、谁发光、高光时刻怎么编排"。它是 2026-09-08 用 skill 做的《eCPM 与广告竞价》与样片《RAG 与知识库》逐帧对比后补的：两片的动效数量、节奏、柔光总面积几乎相同，差距全在下面四条。构建组在 `style-guide.md` 之后必读；QC 用 §6 的判据。
+> This file covers how big things are, what glows, and how highlight moments are arranged. It was written after comparing frame by frame two videos made with this skill: the ad-auction video 《eCPM 与广告竞价》 and the sample 《RAG 与知识库》. Their motion counts, pacing and total glow area were nearly identical. The gap came down entirely to the four points below. Build agents read this after `style-guide.md`. QC uses the criteria in §6.
 
-| 指标（成片逐帧，内容区） | 广告竞价 | RAG 样片 |
+| Metric (per frame, content area) | Ad auction | RAG sample |
 |---|---|---|
-| 每帧平均变化量 / 动效事件每分钟 | 0.47 / 72 | 0.56 / 76 |
-| 最大物体高度中位数 | 172px | 219px |
-| 最大物体 <110px 持续 ≥1.5s 的时长占比 | 29% | 12% |
-| 源码光效词 halo / sweep / ghost | 0 / 0 / 0 | 14 / 12 / 5 |
-| 源码 skew / perspective / rotate | 1 / 0 / 4 | 7 / 1 / 15 |
+| Average frame-to-frame change / motion events per minute | 0.47 / 72 | 0.56 / 76 |
+| Median size of the largest object | 172px | 219px |
+| Share of time the largest object is under 110px for at least 1.5 s | 29% | 12% |
+| Source keyword counts: halo / sweep / ghost | 0 / 0 / 0 | 14 / 12 / 5 |
+| Source keyword counts: skew / perspective / rotate | 1 / 0 / 4 | 7 / 1 / 15 |
 
-## 1. 主体层级：每镜头一个主角
-- **必须有主角**：每个镜头有一个占内容主区高度 ≥1/3 的主体——图形 ≥170px 高，或大字/大数字 ≥96px 且整行宽 ≥300px（Orbitron / Audiowide / Noto 900，三字以上；两三个字的 96px 撑不起画面，要上到 110–150px 或配图形）。主角在第 1 或第 2 个节拍入场，之后的元素都围着它摆。
-- **三档尺寸**：主角 ≥170 / 配角 60–110 / 标签与说明 22–30。配角 ≤4 个，标签 ≤6 个。三档之外不再有第四种尺寸。
-- **尺寸速查**：手机 mock ≥300×520 且屏内首条内容可读；人形 ≥96；机箱/数据库/文档卡 ≥160 高；书本/考卷 ≥240 宽；公式主项 ≥48px、结果项 ≥72px；年份/大数字 96–150px；图表卡 ≥440×300。
-- **天然细小的题材要配主角**：时间轴、公式、表格、流程本身都不够大，必须搭一个主角——大数字（「0.1 秒」96px 而不是 34px）、发光的当前项（当前行放大 1.15 + 紫光）、放大镜下的局部。一根线 + 几枚 34px 胶囊撑 100 帧是缺陷。
-- **表现"多"用矩阵，不用碎屑**：数量感用 ≥6px 的方点阵列或网格，整齐排布、按节拍点亮/熄灭；不要在背景散落小图标。**背景只有幕底**（星点或点阵波），任何"氛围小元素"都会稀释主角。
-- **空场判据**：内容区最大物体高度 <110px 持续 >45 帧 → 中级缺陷；<80px 持续 >45 帧 → 高。
+## 1. Visual hierarchy: one protagonist per shot
+- **Every shot needs a protagonist:** one subject occupying at least a third of the content area's height. That means a graphic at least 170px tall, or large type or a big number at least 96px with a line width of at least 300px (Orbitron, Audiowide or Noto 900, three or more characters). A protagonist of two or three characters at 96px cannot carry a frame. Go up to 110–150px, or pair it with a graphic. The protagonist enters on beat 1 or 2, and the other elements arrange around it afterward.
+- **Three size tiers:** protagonist ≥170, supporting 60–110, labels and notes 22–30. There are at most four supporting elements and six labels. No fourth size tier exists beyond these three.
+- **Quick size reference:** phone mockup ≥300×520, with the first readable content visible on screen. Human figure ≥96. Machine, database or document card ≥160 tall. Book or exam paper ≥240 wide. Main formula term ≥48px, result item ≥72px. Year or large number 96–150px. Chart card ≥440×300.
+- **Small subjects need a protagonist:** timelines, formulas, tables and flow diagrams are not big enough on their own. Build a protagonist for them: a large number ("0.1 seconds" at 96px, not 34px), a lit current item (current row enlarged 1.15 with purple light), or a magnified detail. A single line with several 34px capsules holding the screen for 100 frames is a defect.
+- **Show "many" with a grid, not debris:** use a grid of at least 6px squares, arranged neatly, lighting and dimming on the beat. Do not scatter small icons in the background. **The background is only the backdrop** (stars or the dot wave). Any "atmosphere element" dilutes the protagonist.
+- **Empty-frame criterion:** the largest object in the content area is under 110px for more than 45 frames → medium. Under 80px for more than 45 frames → high.
 
-## 2. 光跟着主角走
-- **主角必带光**：图形主角用 `GLOW_PURPLE`（双层紫柔光，`HeroGlow` 包一层即可）或脚下 `HaloRing`；大字用 `TEXT_GLOW` + 紫色硬投影 `6px 6px 0 PURPLE`（宽体字/片名同款）；橙色指标数字用 `GLOW_ORANGE`。白线条图形只有 `BLOOM_SOFT` 是不够的。
-- **配角不发光**：胶囊、流程轨、标签、表格行、说明字默认无 glow。只有"当前重点"那一枚可以 `GLOW_PURPLE_S`，一帧内 ≤1 处；重点转移时前一处的光 8 帧灭掉。
-- **光的三个层次**：白 bloom（结构线条常驻）< 紫柔光（主角常亮 + 当前重点）< 白闪（事件，3–6 帧）。全片只用这三种，颜色只用紫/橙/红三色光。
-- **光要动**：主角光呼吸 30 帧周期 ±15%；重点激活时 α 0→1 走 8 帧；离场时光先灭（6 帧）再整体淡出，不要带着满光硬切。
-- **硬投影是"重"字的标配**：Audiowide/Orbitron 大字一律 `6px 6px 0 PURPLE`（或 PURPLE_DEEP）+ `0 0 28px rgba(102,45,248,.45)`；Noto 900 大字用 1–2.5px 紫描边 `paintOrder: stroke fill` + 紫柔光。
+## 2. Light follows the protagonist
+- **The protagonist always carries light:** graphic protagonists use `GLOW_PURPLE` (double-layer purple soft glow; wrap in `HeroGlow`), or a `HaloRing` under the feet. Large text uses `TEXT_GLOW` and a purple hard shadow `6px 6px 0 PURPLE` (the same for wide display type and titles). Orange metric numbers use `GLOW_ORANGE`. White line graphics with only `BLOOM_SOFT` are not enough.
+- **Supporting elements do not glow:** capsules, flow tracks, labels, table rows and descriptive text have no glow by default. Only the "current focus" item may have `GLOW_PURPLE_S`, and at most one per frame. When focus moves, the previous glow turns off over 8 frames.
+- **Three layers of light:** white bloom (constant on structural lines) < purple soft glow (protagonist's constant light, plus the current focus) < white flash (events, 3–6 frames). Only these three layers are used across the video, and light colors are limited to purple, orange and red.
+- **Light moves:** the protagonist's light breathes ±15% on a 30-frame cycle. Focus activation runs α 0→1 over 8 frames. On exit, the light goes off first (6 frames), then the whole element fades. Do not cut hard while still fully lit.
+- **Hard shadows are the standard for heavy text:** Audiowide and Orbitron large text always uses `6px 6px 0 PURPLE` (or PURPLE_DEEP) plus `0 0 28px rgba(102,45,248,.45)`. Noto 900 large text uses a 1–2.5px purple outline with `paintOrder: stroke fill` and a purple soft glow.
 
-## 3. 高光时刻（set piece）
-每章 1–2 个：章论点句、主角登场、收尾 payoff。分镜阶段写进「全局约束 §高光时刻清单」，构建组按下面的编排做，不要用普通镜头的"胶囊 + 图标 + 一行字"应付。
+## 3. Highlight moments (set pieces)
+Each chapter has one or two: the chapter's main claim, a protagonist introduction, and the closing payoff. In the storyboard's global constraints, the highlight moment list gives the shots, and build groups follow the arrangement below. Do not handle them with a "capsule + icon + one line of text".
 
-**标准编排（登场型，≥90 帧；相对帧见 `fx.tsx` 的 `SET_PIECE`）**
-| 相对帧 | 动作 | 组件 |
+**Standard arrangement (entrance type, at least 90 frames; relative frames are in `SET_PIECE` in `fx.tsx`)**
+| Relative frame | Action | Component |
 |---|---|---|
-| T0 | 清场：上一镜头已归零，只剩幕底 | — |
-| T0+4 / +22 / +40 | 三轮紫光条横扫（每轮 3 条、2 帧错峰、16 帧、α .6/.55/.55 白芯） | `LightBar` |
-| T0+18 | 中央舞台光线展宽到 720，之后呼吸 | `StageLine` |
-| T0+37 | 主角文字白描边轮廓以 10% 隐现（预示） | `GhostText` |
-| T1（节拍帧） | 光线白闪 3 帧后消失；主角 `GlitchIn`（rgbSplit 8 / slices 20 允许） | `GlitchIn` |
-| T1+12 | `emphasisPulse` 1.11 | — |
-| T1+16 | 中文副标自下滑入 Δ80 / 22 帧 | `slideUp` |
-| T1+24 | 拆词/标签 `SoftIn` 2 帧错峰 | `SoftIn` |
+| T0 | Clear the scene: the previous shot has faded to zero, and only the backdrop remains | — |
+| T0+4 / +22 / +40 | Three rounds of purple light bars sweeping across (each round three bars, 2-frame stagger, 16 frames, α .6/.55/.55 white core) | `LightBar` |
+| T0+18 | Central stage line widens to 720, then breathes | `StageLine` |
+| T0+37 | Protagonist's white-outline silhouette fades in at 10% (preview) | `GhostText` |
+| T1 (beat frame) | Stage line flashes white for 3 frames and disappears. Protagonist `GlitchIn` (rgbSplit 8 and slices 20 are allowed). | `GlitchIn` |
+| T1+12 | `emphasisPulse` to 1.11 | — |
+| T1+16 | Chinese subtitle slides up from below, Δ80 over 22 frames | `slideUp` |
+| T1+24 | Word-by-word label or Pill SoftIn, staggered by 2 frames | `SoftIn` |
 
-**变体**
-- 大数字型：`BigNumber` 20 帧计数到位 + 单位小字 + 一个对照物（图标或另一个数字）+ 橙色问号/结论 `GlitchIn`。样片 SC39「1,000,000 tokens」。
-- 象征物型：主体 `slideUp` Δ≤170 + 脚下 `HaloRing` draw-on 20 帧（外环内环白描边，紫渐变填充，3 圈虚线波纹 2 帧一相位）+ 结论大字 Noto 900 60px 紫描边 `GlitchIn`。样片 SC44「知识库 = 护城河」。
-- 年份/出处型：年份 `BigNumber` 96px 滚动落定 + 机构胶囊 + 论文卡/结果页卡 ≥240 宽在旁，年份不能独自站在空屏上超过 30 帧。
+**Variants**
+- Large-number type: `BigNumber` counts up over 20 frames to its final value, with a small unit label, a comparison object (an icon or another number), and an orange question mark or conclusion with `GlitchIn`. Sample: SC39, "1,000,000 tokens".
+- Symbol type: the subject slides up Δ≤170, with a `HaloRing` draw-on under its feet over 20 frames (outer and inner white outlines, purple gradient fill, three dashed ripple rings with a 2-frame phase offset), plus a large conclusion in Noto 900 at 60px with a purple outline and `GlitchIn`. Sample: SC44, "knowledge base = moat".
+- Year or source type: a year as a `BigNumber` at 96px rolls to its final value, with an institution Pill, and a paper or results card at least 240 wide beside it. The year must not stand alone on an empty screen for more than 30 frames.
 
-## 4. 纵深与承接
-- 讲空间、层级、索引的镜头用倾斜平面：`skewX(-20deg) scaleY(.5)` 叠 2–3 层，层距 90px，路径在层间 draw-on；讲筛选用 `Trap` 漏斗；旋转只给齿轮、表盘、转盘。全片平铺是缺陷。
-- 承接位移：上一镜头的主角缩小移位给新主角让位（`kf` 16 帧 `easeInOutPow(2.5)`，同时缩到 0.6），而不是消失后重画一个小的。承接的两镜头共用同一组件同一参数。
-- 运镜：每章 ≥3 次、每镜头 ≤1 次，用 `CameraRig`；定点推近 1→1.33 / 33 帧绕主角，承接位移 16 帧，整组平移与视差表现「多」；运镜时 HUD / 字幕不动，不与 glitch、错峰入场重叠。预算与帧数见 `motion-vocabulary.md` §镜头运动。
+## 4. Depth and carry-over
+- Shots about space, hierarchy or indexes use tilted planes: `skewX(-20deg) scaleY(.5)` stacked two or three layers, with 90px between layers, and paths draw on between layers. Shots about filtering use a `Trap` funnel. Rotation is only for gears, dials and turntables. Flat layouts throughout the video are a defect.
+- Carry-over: the previous shot's protagonist shrinks and shifts aside to make room for the new protagonist (`kf` over 16 frames with `easeInOutPow(2.5)`, scaling to 0.6 at the same time). It does not disappear and then redraw a smaller version. Two shots that carry over share the same component and the same parameters.
+- Camera: at least 3 moves per chapter and at most 1 per shot, using `CameraRig`. A fixed push-in from 1 to 1.33 over 33 frames orbits the protagonist. A carry-over takes 16 frames. Group pans and parallax show "many". HUD and subtitles do not move during a camera move, and moves must not overlap a glitch or a staggered entry. Budget and frame counts are in `motion-vocabulary.md`, camera-moves section.
 
-## 5. 构建组自检（写进 BUILD_NOTES 的镜头表，每镜头一行）
-| 镜头 | 主角 | 主角高度 px | 主角的光 | 高光时刻 | 配角数 / 标签数 |
-主角高度 <170 或"无光"的行必须写原因；空场判据不许出现。
+## 5. Build group self-check (one row per shot in BUILD_NOTES)
+| Shot | Protagonist | Protagonist height px | Protagonist light | Highlight moment | Supporting / label count |
+Any row where the protagonist is under 170px or unlit must give a reason. The empty-frame criterion must never trigger.
 
-## 6. QC 判据（配 `scripts/frame_metrics.py`）
-脚本的「主体尺度」= 最大连通物体的高度，宽而不细的物体（一行大字、宽卡）按 min(宽, 4×高)/2.5 折算，一行字的字与字（字距 ≤40px）并成一个物体，星点不计（点阵波幕底 `config.bg='dots'` 时脚本按同一网格坐标把点抠掉，并把柔光亮度下限从 10 抬到 22——点阵底色 #0b0c11 略带蓝，不抬整屏都会算成柔光）；扫光 / 舞台光线 / 光环阶段（内容区柔光 ≥10000px²）不算空场，主体中位数也不统计这些帧。
-- 每镜头主体尺度中位数 <170 → 低；<110 且无大面积光活动持续 >45 帧 → 中；<80 持续 >45 帧 → 高。
-- 高光时刻镜头主角区无 ≥3000px² 的柔光斑 → 中；普通镜头主角区柔光 <800px² → 低（主角无光）。
-- 一帧内独立紫色色块 ≥8 个（紫色碎片指数）→ 低，提示紫色撒在配角上。
-- 背景出现 ≥10 个 <60px 的散落小图形（不含星点 / 幕底点阵）→ 中（碎屑）。**整齐的点云 / 方点阵列（向量空间、曝光墙）也会触发这条，属设计允许——QC 看帧判定：排布有规律、按节拍点亮的是矩阵，随机撒的小图标才是碎屑。**
+## 6. QC criteria (with `scripts/frame_metrics.py`)
+The script's "subject size" is the height of the largest connected object. Wide but thin objects (a line of large text, a wide card) are scaled by min(width, 4×height)/2.5. Characters in one line of text (gaps of 40px or less) merge into one object. Stars are not counted. When the backdrop is the dot wave (`config.bg='dots'`), the script removes dots on the same grid coordinates, and it raises the soft-light brightness floor from 10 to 22. The dot base color #0b0c11 has a slight blue cast, so without raising the floor, the whole screen would count as soft light. Light-sweep, stage-line and halo phases (content-area soft light of at least 10000px²) are not counted as empty, and the median subject size excludes those frames.
+- Shot median subject size under 170 → low. Under 110 with no large light activity for more than 45 frames → medium. Under 80 for more than 45 frames → high.
+- Highlight-moment shots with under 3000px² of soft light in the protagonist area → medium. Ordinary shots with under 800px² of soft light in the protagonist area → low (unlit protagonist).
+- Eight or more separate purple patches in one frame (purple fragment index) → low, suggesting purple is spread across supporting elements.
+- Ten or more background shapes under 60px (not stars and not backdrop dots) → medium (debris). **A tidy dot cloud or grid of squares (vector spaces, exposure walls) also trips this rule. That is an allowed design.** QC checks the frame: a regular arrangement lit on the beat is a matrix. Randomly scattered small icons are debris.
 
-
-## 7. 动词驱动的持续动作（第四片用户裁定 2026-09-10；「入场即停」是缺陷）
-- 现象：元素按字幕节拍进来后就停着等下一拍，只有柔光呼吸。用户看 30 秒样片的第一反应就是它；量化后 4/6 镜头静止帧 42–72%、最长静止 2.8 s。样片《RAG》也有同样的毛病，「对标样片」筛不出它。
-- 规则：**每个字幕块讲的动词，画面上要有一个持续到下一拍的动作**（数据流 / 脉冲光点沿箭头跑 / 逐行打字 / 逐格点亮 / 生长 / 旋转 / 闸门开合 / 队列压紧）；元素入场后**不许完全静止 >30 帧**（柔光呼吸不算）；没有其它运镜的镜头加一次 1.0→1.05 慢推贯穿（算该镜头的一次运镜；慢推后内容要留在 x 89–1191 / y 122–607）。边界不变：一个主角、一处闪烁、背景只有幕底、不加碎屑，动作为动词服务。
-- 量化（`scripts/motion_check.py`）：内容区（去 HUD / 字幕 / 进度条）320×180 采样逐帧灰度平均变化 <0.35 记静止帧；每镜头静止 ≤40%、最长 ≤1.0 s（构建组目标留余量 ≤0.7 s）。**成片 fin_frames 复测才是判据**：组级低分辩率渲染偏松（第四片 48/48 过 → 成片 11 个超限）。`--frames` 模式多给一列「最长静止段内全分辩率变化像素数」：<800 真静（→ 中，加动作），800–2500 小面积动作（→ 低，**加大幅度**：运动元素更亮更大更密、主角本体 30 帧呼吸 ±2%，不是加元素）。
-- 分镜表写法：每镜头「动效」列末尾写「持续：…」一句；全局约束加 §9；构建组 BUILD_NOTES 镜头表加「motion_check 静止% / 最长静止」两列。
+## 7. Verb-driven continuous motion (fourth video, user decision 2026-09-10: "still after entering" is a defect)
+- Symptom: elements enter on the subtitle beat and then sit still waiting for the next beat, with only a soft glow breathing. The user's first reaction, watching the 30-second sample, was to this. Measured: 4 of 6 shots had still-frame shares of 42–72%, and the longest still stretch was 2.8 s. The sample RAG video has the same problem, so "match the sample" does not catch it.
+- Rule: **each subtitle block's verb needs an on-screen action that continues until the next beat** (data flowing, a light pulse running along an arrow, typing line by line, lighting cells one by one, growing, rotating, a gate opening or closing, a queue compressing). After entering, an element **must not stay completely still for more than 30 frames** (breathing glow does not count). A shot without any other camera move gets a slow 1.0→1.05 push-in across its whole duration (this counts as that shot's one camera move). After the slow push-in, content must stay within x 89–1191 and y 122–607. The boundaries do not change: one protagonist, one glitch, backdrop only, no debris, and the motion must serve the verb.
+- Measurement (`scripts/motion_check.py`): sample the content area (excluding HUD, subtitles and progress bar) at 320×180 and compute average grayscale change frame by frame. Change under 0.35 counts as a still frame. Per shot, still share must be ≤40%, and the longest still run ≤1.0 s (build groups aim for ≤0.7 s for margin). **The final-cut check (`fin_frames`) is the criterion.** Group-level low-resolution renders read too loose: in the fourth video, group checks passed 48/48, but the final cut had 11 shots over the limit. The `--frames` mode adds a column for "changed full-resolution pixels within the longest still run". Under 800 is a true still (→ medium, add motion). 800–2500 is small-area motion (→ low, **increase the amplitude**: make moving elements brighter, larger and denser, with a ±2% breathing cycle over 30 frames on the protagonist itself. Do not add elements).
+- Storyboard format: the motion column of each shot ends with a "Continues:" line. The global constraints get a §9. Each build group's BUILD_NOTES shot table gets two columns: "motion_check still share" and "longest still".

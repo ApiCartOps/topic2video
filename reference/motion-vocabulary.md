@@ -1,85 +1,88 @@
-# 动效词汇表（n = N − f0，N 为成片帧号；全部纯函数，随机只用 rnd）
+# Motion vocabulary (n = N − f0, where N is the final-cut frame number. All formulas are pure functions. Randomness only through rnd.)
 
-## 入场
-| 名称 | 公式/组件 | 帧数 | 用途 |
+## Entry
+| Name | Formula or component | Frames | Use |
 |---|---|---|---|
-| **SoftIn（默认）** | `<SoftIn N f0>`：opacity easeOut(2.5) 首帧≈25%→1，上浮 10px→0 | 8 | 一切文字、标签、HUD 换词、小图标 |
-| GlitchIn（重点词） | `<GlitchIn N f0>` 12 帧透明度模板 [.5,1,.5,0,.5,0,.5,1,.75,.5,.75,1] | 12 | **每镜头 ≤1 处**，只给核心术语；rgbSplit/slices 重口味只给片头、章节卡、主角登场、片尾 |
-| 自下滑入 | `top = yEnd + slideUp(n, Δ)`，Δ·(1−n/22)^2.5 | 22 | 卡片、图形；**Δ≤120**（Δ300 会穿字幕带），配前 6 帧 fadeIn |
-| 侧向滑入 | `left = xEnd − Δ·powOutRemain(n,18,2.5)`，Δ 260–320 | 18 | 安全区外进入的替代方案 |
-| 缩放入场 | `scale = scaleIn(n)`（cubic-bezier(.1,.1,.35,1)） | 21 | 图标、球、卡 |
-| 错峰 | 第 i 个元素 f0 + stagger(i, 2) | 2/个 | 列表、卡片阵列；**不要用 GlitchIn 做错峰**（像掉帧） |
-| draw-on 线/箭头 | `<LineArrow p={clamp01(n/20)}>`，箭头自根部长出、头随杆 | 16–28 | 连接、指向 |
-| draw-on 框 | SVG stroke-dasharray + dashoffset，或 clipPath rect wipe | 20–30 | 虚线框、勾、路径 |
-| 打字机 | `text.slice(0, floor(n/2))` 每 2 帧 1 字 | 按字数 | 问句、答复、提示词规则 |
-| 计数 | Counter，值 = kf(n,[[0,a],[20,b]]) 取整 | 14–26 | 年份、百分比、token 数 |
-| 逐行 wipe | 每行 2 帧 clip 宽 0→100% | 2/行 | 文档卡文本线 |
+| **SoftIn (default)** | `<SoftIn N f0>`: opacity easeOut(2.5), first frame ≈25% rising to 1, rising 10px to 0 | 8 | All text, labels, HUD term changes, small icons |
+| GlitchIn (key term) | `<GlitchIn N f0>`: 12-frame opacity template [.5,1,.5,0,.5,0,.5,1,.75,.5,.75,1] | 12 | **At most one per shot**, only for the core term. The heavy rgbSplit and slices variants are only for the opening, chapter cards, protagonist introductions and closing. |
+| Slide up from below | `top = yEnd + slideUp(n, Δ)`, with Δ·(1−n/22)^2.5 | 22 | Cards and graphics. **Δ≤120** (Δ300 would cross the subtitle band). Pair with a 6-frame fadeIn at the start. |
+| Sideways slide | `left = xEnd − Δ·powOutRemain(n,18,2.5)`, Δ 260–320 | 18 | An alternative when entering from outside the safe area |
+| Scale-in | `scale = scaleIn(n)` (cubic-bezier(.1,.1,.35,1)) | 21 | Icons, balls, cards |
+| Staggered | Element i starts at f0 + stagger(i, 2) | 2 per item | Lists and card arrays. **Do not use GlitchIn for staggering**, because it looks like dropped frames. |
+| Draw-on line or arrow | `<LineArrow p={clamp01(n/20)}>`: the arrow grows from its root, the head follows the shaft | 16–28 | Connections and pointing |
+| Draw-on box | SVG stroke-dasharray plus dashoffset, or a clipPath rect wipe | 20–30 | Dashed boxes, checks, paths |
+| Typewriter | `text.slice(0, floor(n/2))`, one character every 2 frames | by character count | Questions, answers, prompt rules |
+| Counter | Counter, value = kf(n,[[0,a],[20,b]]) rounded | 14–26 | Years, percentages, token counts |
+| Line-by-line wipe | Each line's clip width goes 0→100% over 2 frames | 2 per line | Text lines on document cards |
 
-## 强调
-| 名称 | 公式 | 帧数 |
+## Emphasis
+| Name | Formula | Frames |
 |---|---|---|
-| 脉冲 | `scale = emphasisPulse(n, {peak: 1.11, up: 13, hold: 4, down: 13})` | 30 |
-| 灰→紫变色 | `mix(GREY, PURPLE, clamp01(n/11))`（边框与填充同变） | 11 |
-| 柔光亮起 | boxShadow GLOW_PURPLE_S 的 α 0→1 | 8 |
-| 白闪 | 元素 filter brightness 1→1.6→1 | 6–10 |
-| 高亮条 wipe | 紫色半透明条自左 scaleX 0→1 | 12 |
+| Pulse | `scale = emphasisPulse(n, {peak: 1.11, up: 13, hold: 4, down: 13})` | 30 |
+| Grey to purple | `mix(GREY, PURPLE, clamp01(n/11))` (border and fill change together) | 11 |
+| Soft glow on | boxShadow GLOW_PURPLE_S, α 0→1 | 8 |
+| White flash | element filter brightness 1→1.6→1 | 6–10 |
+| Highlight bar wipe | Semi-transparent purple bar scaling from the left, scaleX 0→1 | 12 |
 
-## 光效（谁发光、怎么亮；规则见 `composition-and-light.md`，组件在 `src/fx.tsx`）
-| 名称 | 公式/组件 | 帧数 | 用途 |
+## Light effects (who glows and how; rules in `composition-and-light.md`; components in `src/fx.tsx`)
+| Name | Formula or component | Frames | Use |
 |---|---|---|---|
-| 主角常亮 | `<HeroGlow x y w h N>` 双层紫柔光 + 30 帧呼吸 ±15%；或 `LLMIcon glow` | 常驻 | **每镜头主角必带**；配角不带 |
-| 紫光条横扫 | `<LightSweep N rounds={[T0+4,T0+22,T0+40]}>` 每轮 3 条、2 帧错峰、16 帧、α .6/.55/.55 白芯 | 3×16 | 高光时刻开场的「舞台追光」 |
-| 舞台光线 | `<StageLine N f0 flashAt>` 14 帧展宽到 720 → 呼吸 → 节拍帧白闪 3 帧消失 | 14+ | 主角落点的预示线 |
-| 幽灵轮廓 | `<GhostText opacity={ghostOpacity(N,f0,until)}>` 白描边 10% 隐现 | 12 淡入 | 主角大字出现前约 40 帧 |
-| 光环 | `<HaloRing p fillOp phase half>` 白描边 draw-on 20 帧 + 紫渐变 12 帧 + 3 圈虚线波纹 2 帧一相位 | 20 | 象征物脚下（back / 主体 / front 三层） |
-| 紫硬投影 | 大字 textShadow `6px 6px 0 PURPLE, 0 0 28px rgba(102,45,248,.45)`（`BigNumber` 默认） | 常驻 | Audiowide / Orbitron 大字、片名 |
-| 紫描边 | Noto 900 大字 `WebkitTextStroke 2.5px PURPLE` + `paintOrder: stroke fill` + 紫柔光 | 常驻 | 结论大字 |
-| 橙色发光 | `GLOW_ORANGE` / textShadow 橙 | 常驻 | 指标数字、结果项（−49%、¥3.20） |
-| 柔光亮起 | boxShadow `GLOW_PURPLE_S` α 0→1 | 8 | 重点转移到某一项 |
-| 光先灭 | 离场前 6 帧 glow α→0，再整体归零淡出 | 6+8 | 任何带光元素的离场 |
-| 白闪 | filter brightness 1→1.6→1，或 `StageLine` 的 flash | 3–6 | 事件：点击、命中、落槌 |
-一帧内：主角光 1 处 + 重点光 ≤1 处；光只有紫 / 橙 / 红三色；白 bloom 只给结构线条。三轮扫光 → 光线 → 轮廓 → 白闪 + glitch 的完整编排见 `composition-and-light.md` §3 与 `fx.tsx` 的 `SET_PIECE`。
+| Protagonist constant light | `<HeroGlow x y w h N>`: double purple soft glow, breathing ±15% over 30 frames; or `LLMIcon glow` | Always on | **Every shot's protagonist must glow.** Supporting elements do not. |
+| Purple light-bar sweep | `<LightSweep N rounds={[T0+4,T0+22,T0+40]}>`: three bars per round, 2-frame stagger, 16 frames, α .6/.55/.55 white core | 3×16 | The "stage spotlight" at the start of a highlight moment |
+| Stage line | `<StageLine N f0 flashAt>`: 14 frames widening to 720, then breathing, then a 3-frame white flash on the beat frame and it disappears | 14+ | Previews where the protagonist lands |
+| Ghost outline | `<GhostText opacity={ghostOpacity(N,f0,until)}>`: white outline at 10%, fading in | 12 fade-in | About 40 frames before a protagonist's large text appears |
+| Halo | `<HaloRing p fillOp phase half>`: white outline draw-on over 20 frames, purple gradient over 12 frames, three dashed ripple rings with a 2-frame phase offset | 20 | Under a symbol (three layers: back, subject, front) |
+| Purple hard shadow | Large text textShadow `6px 6px 0 PURPLE, 0 0 28px rgba(102,45,248,.45)` (default for `BigNumber`) | Always on | Audiowide and Orbitron large text, the video title |
+| Purple outline | Noto 900 large text with `WebkitTextStroke 2.5px PURPLE`, `paintOrder: stroke fill`, plus a purple soft glow | Always on | Conclusion text |
+| Orange glow | `GLOW_ORANGE`, or an orange textShadow | Always on | Metric numbers and result items (−49%, ¥3.20) |
+| Soft glow on | boxShadow `GLOW_PURPLE_S`, α 0→1 | 8 | Shifting focus to one item |
+| Light off first | Six frames before exit the glow goes α→0, then the whole element fades | 6+8 | Exit of any element that glows |
+| White flash | filter brightness 1→1.6→1, or the flash on `StageLine` | 3–6 | Events: a click, a hit, a gavel strike |
 
-## 离场（**硬切前必须归零**）
-| 名称 | 公式 | 帧数 |
+At any moment: one protagonist light, plus at most one focus light. Light is only purple, orange or red. White bloom is only for structural lines. For the full sequence of three sweep rounds, stage line, outline and white flash with glitch, see `composition-and-light.md` §3 and `SET_PIECE` in `fx.tsx`.
+
+## Exit (**must reach zero before a hard cut**)
+| Name | Formula | Frames |
 |---|---|---|
-| 归零淡出 | `opacity = 1 − (n/N)^1.5`（N=6–12），末帧 0 | 6–12 |
-| 加速下摇 | `translateY(exitAccel(n, c))`，c 0.2–1.2，配归零淡出；限幅 ≤10px 若旁边有字幕带 | 6–12 |
-| 加速上出（覆盖层） | `dy = −(n/11)^2·440`，`opacity = 1 − (n/11)^1.6` | 12 |
-| 左滑离场 | `translateX(−c·n²)` + 归零淡出 | 12–15 |
-| 变灰下沉 | 11 帧变灰 + 12 帧下沉 12px（"记忆"退居次要） | 12 |
-禁止：6.7%/帧的 exitFade 单独用于硬切前（末帧还剩 40–60% 会"啪"）；可见度 >20% 时 Sequence 结束。
+| Fade to zero | `opacity = 1 − (n/N)^1.5` (N = 6–12), zero on the last frame | 6–12 |
+| Accelerating drop | `translateY(exitAccel(n, c))`, c 0.2–1.2, with fade to zero. Limit to ≤10px if a subtitle band is nearby. | 6–12 |
+| Accelerating exit upward (overlay) | `dy = −(n/11)^2·440`, `opacity = 1 − (n/11)^1.6` | 12 |
+| Left-slide exit | `translateX(−c·n²)` with fade to zero | 12–15 |
+| Grey sink | Turns grey over 11 frames, then sinks 12px over 12 frames (the "memory" recedes to secondary) | 12 |
 
-## 镜头运动（运镜；组件 `fx.tsx` 的 `CameraRig`/`camAt`）
-> 量化背景（2026-09-08）：风格来源的推荐系统原片每分钟 6.6 次整体运镜、平均 16 帧、含推近 / 拉远 / 视差 / 长达 150 帧的滚动；样片 RAG 与广告竞价片都只有 2.2–2.5 次/分钟、平均 5–8 帧、**零次推近**。旧版本文写的「静态镜头为主」是原因。下面是预算与词汇。
+Forbidden: using exitFade's 6.7% per frame alone before a hard cut (its last frame still has 40–60% opacity, so it "pops"). When visibility is still above 20%, the Sequence must not end.
 
-**预算**：每章 ≥3 次运镜、每镜头 ≤1 次；单次 30–45 帧 easeInOut；运镜期间不做 GlitchIn、不做错峰入场（先入场停 ≥10 帧再动）；文字可读性优先，scale ≤1.33（描边随组放大，>1.4 会显粗）；顶部 HUD / 流程轨 / 字幕在屏幕空间不动，运镜只动内容层。
+## Camera moves (components `CameraRig` and `camAt` in `fx.tsx`)
+> Background measured 2026-09-08: the recommendation-app original, which is the style source, has 6.6 overall camera moves per minute, averaging 16 frames each, including push-ins, pull-backs, parallax, and a scroll of up to 150 frames. The sample RAG video and the ad-auction video each had only 2.2–2.5 moves per minute, averaging 5–8 frames, and **no push-ins at all**. The old version of this guide said "mostly static shots", and that is why. The following sets the budget and the vocabulary.
 
-| 名称 | 公式 / 组件 | 帧数 | 何时用 |
+**Budget:** at least 3 camera moves per chapter, at most 1 per shot. Each move takes 30–45 frames of easeInOut. No GlitchIn and no staggered entries during a move (let an element sit still for at least 10 frames before moving). Text readability comes first: scale ≤1.33 (outlines thicken with the group, and above 1.4 they look heavy). HUD, flow track and subtitles do not move in screen space, so the move only affects the content layer.
+
+| Name | Formula or component | Frames | When to use |
 |---|---|---|---|
-| 定点推近 | `<CameraRig N keys={[{f:a,x:640,y:360,s:1},{f:a+33,x:px,y:py,s:1.33}]}>`（原片 1→1.329 / 33 帧 bezier(.6,.05,.4,.95)；1→1.358 / 35 帧 幂 2.5） | 30–40 | 主角说到第 2 个节拍还要停 ≥60 帧时推向主角；推近同时顶/底暗角淡入 18 帧 |
-| 拉远 / 拉回 | 同上反向（原片 37–42 帧 bezier(.55,.05,.4,1)） | 37–45 | 从局部回到全景、章末收束、露出被裁掉的第二主体 |
-| 承接位移 | 上一镜头主角 `kf` 16 帧 easeInOutPow(2.5) 缩到 0.6 并移到角落，让位给新主角；两镜头共用同一组件同参数 | 16 | 每处「不离场」承接都要有，不要原地消失重画 |
-| 整组平移（舞台平移） | 整组作为刚体左移一屏 / 上移 110px（原片流程图段末、传送带升起） | 20–30 | 一屏讲完、下一屏在旁边；列表超过一屏 |
-| 整页滚动 | y 位移 easeInOutPow(2.5)，可带滚动条 | 43 | 长列表 / 长文档卡 |
-| 视差 | 2–3 层不同速度（原片 6.4 / 9.6 / 12.8 px/帧，背景层压暗 ×0.43），或内容层随前景 1.33× 位移 | 26+ | 表现「很多」「世界很大」：截图墙、文档墙、日志流 |
-| 加速出画 | 整场景向下 / 向左平移，位移表持续加速，最后 1 帧全部出画 | 12–25 | 章末清场、比喻结束 |
-| 甩出（whip） | 空心副本横向偏移 −63 / +38px 1–3 帧后复位，或整组 3 帧位移 + 方向模糊 | 1–3 | 冲突 / 对比切换的瞬间，一章 ≤2 次 |
-| 屏幕空间暗角 | 顶/底 linear-gradient 黑 α .38–.42，淡入 18 帧 | 18 | 推近时同步；把注意力压到中央 |
-运镜也算「每句一处可察觉变化」——一句没有新元素时，用一次 30 帧推近替代硬塞元素。
+| Fixed push-in | `<CameraRig N keys={[{f:a,x:640,y:360,s:1},{f:a+33,x:px,y:py,s:1.33}]}>` (original 1→1.329 over 33 frames with bezier(.6,.05,.4,.95); 1→1.358 over 35 frames with a power 2.5 curve) | 30–40 | Push in toward the protagonist when it's still on screen for the second beat for at least 60 frames. Vignette at the top and bottom fades in over 18 frames during the push-in. |
+| Pull-back | Same as above in reverse (original 37–42 frames with bezier(.55,.05,.4,1)) | 37–45 | Moving from detail back to the full view, closing out a chapter, or revealing a second subject cropped out earlier |
+| Carry-shift | The previous shot's protagonist goes from `kf` over 16 frames with easeInOutPow(2.5), shrinks to 0.6 and moves to a corner, making room for the new protagonist. The two shots share the same component and parameters. | 16 | Every "no exit" handover needs this. Do not disappear and redraw a smaller version. |
+| Group pan (stage pan) | The whole group moves as a rigid body one screen to the left, or 110px up (original: the end of a flow-chart section, a conveyor belt rising) | 20–30 | One screen is complete and the next is beside it. Lists longer than one screen. |
+| Full-page scroll | Y offset with easeInOutPow(2.5), can include a scroll bar | 43 | Long lists or long document cards |
+| Parallax | 2–3 layers at different speeds (original 6.4 / 9.6 / 12.8 px/frame, background layer dimmed ×0.43), or the content layer moves 1.33× the foreground | 26+ | Showing "many" or "a very large world": screenshot walls, document walls, log streams |
+| Accelerating exit | The whole scene moves down or left with an accelerating offset table, and all of it leaves the frame on the last frame | 12–25 | Clearing the scene at the end of a chapter, or after an analogy ends |
+| Whip | A hollow copy offset sideways by −63 or +38px for 1–3 frames, then snaps back. Or the whole group moves 3 frames with directional blur. | 1–3 | The instant of a conflict or comparison cut. At most two per chapter. |
+| Screen-space vignette | Top and bottom linear gradients, black at α .38–.42, fading in over 18 frames | 18 | Synchronized with a push-in, to draw attention to the center |
 
-## 节拍
-- 元素出现帧 = 对应字幕块起始帧（`script/timeline.md` 每个 ｜ 块）；容差 −6…+3。
-- 每句解说至少一处可察觉的画面变化；静止 >45 帧要加呼吸（灯泡 20 帧周期、柔光 30 帧周期、星点漂移之外）。
-- 句间空白 10 帧：前一镜头用其中 2 帧收尾，后一镜头用 8 帧入场（镜头区间 [句 from−8, 末句 to+2]）。
-- 章前空白 45 帧给章节卡：上一章末镜头 exitFade 归零 → 章节卡 3 帧后 glitch → 末 12 帧加速上出 → 新章 HUD 从卡结束下一帧淡入。
+A camera move also counts as "one noticeable change per sentence". When a sentence adds no new element, use one 30-frame push-in instead of forcing an element in.
 
-## 衔接（分镜表必须写清两侧）
-- 写法：「A 末 8 帧归零淡出 + 轻微下摇；B 首帧起首批元素 SoftIn」。不要只写"硬切"（两侧会各自理解为"我不动、你从节拍帧才入场"→ 6–8 帧空场）。
-- 组界帧（两个构建组交界）：两组各自对分镜实现，QC 单列组界帧核对；相邻 Sequence 允许 0–4 帧重叠。
-- 承接同一元素（如文档卡从上镜头带到下镜头）：两镜头共用同一组件 + 同参数，交界帧像素一致。
+## Beats
+- An element's appearance frame equals the start frame of its subtitle block (each ｜ block in `script/timeline.md`). Tolerance −6…+3.
+- Every narration sentence has at least one noticeable change on screen. A still period over 45 frames needs breathing (a 20-frame light cycle, a 30-frame glow cycle, or star drift).
+- The 10-frame gap between sentences: the previous shot uses its last 2 frames to finish, and the next shot uses its first 8 to enter (shot range [sentence from−8, last sentence to+2]).
+- A 45-frame gap before a chapter makes room for the chapter card: the previous chapter's last shot exits to zero, the card glitches in after 3 frames, the last 12 frames of the card accelerate out, and the new chapter's HUD fades in on the frame after the card ends.
 
-## 闪烁白名单规则（用户裁定）
-- 每镜头 ≤1 处 GlitchIn，只给"这一镜头在讲的那个词"；分镜表里 glitch 一词只出现在那一格，其余写"淡入"。
-- HUD 换词、流程轨、编号、角标、小标签、数字、图标：一律 SoftIn/淡入/缩放。
-- 终检用 12 帧模板扫描全片，命中数必须等于白名单条数。
+## Continuity (the storyboard must describe both sides of each cut)
+- Write it as: "Shot A fades to zero over its last 8 frames with a slight drop; Shot B's first elements enter with SoftIn from its first frame." Do not write only "hard cut", because each side will read it as "I stay still, and you enter on the beat frame", which produces 6–8 empty frames.
+- Group boundary frames (where two build groups meet): each group matches the storyboard on its own side, and QC checks boundary frames as a separate list. Adjacent Sequences may overlap by 0–4 frames.
+- When one element carries across shots (for example a document card moving from one shot into the next), both shots use the same component and the same parameters, so the boundary frame is pixel-identical.
+
+## Glitch allow-list (user decision)
+- At most one GlitchIn per shot, only on the term the shot is talking about. In the storyboard, the word glitch appears only in that cell. Everything else is written as "fade in".
+- HUD term changes, flow track, numbers, badges, small labels, numbers and icons: always SoftIn, fade in, or scale.
+- The final check scans the whole video with the 12-frame template. The number of hits must equal the number of allow-list entries.

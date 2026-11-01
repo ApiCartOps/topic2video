@@ -1,16 +1,16 @@
-# 字体许可
+# Font license
 
-本目录随附的四款字体均以 **SIL Open Font License, Version 1.1** 分发，许可全文见本文件末尾。
-各字体的版权与保留字体名（取自字体自身的 name 表）：
+The four fonts in this directory are distributed under the **SIL Open Font License, Version 1.1**. The full license text is at the end of this file.
+Each font's copyright and reserved font name (taken from the font's own name table):
 
-| 文件 | 字体 | 版权声明 |
+| File | Font | Copyright notice |
 |---|---|---|
 | `NotoSansSC.ttf` | Noto Sans SC | (c) 2014-2021 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'. |
 | `Orbitron[wght].ttf` | Orbitron | Copyright 2018 The Orbitron Project Authors (https://github.com/theleagueof/orbitron), with Reserved Font Name: "Orbitron". |
 | `Exo2-Italic.ttf` | Exo 2 | Copyright 2013 The Exo 2 Project Authors (https://github.com/googlefonts/Exo-2.0) |
 | `Audiowide-Regular.ttf` | Audiowide | Copyright (c) 2012 by Brian J. Bonislawsky DBA Astigmatic (AOETI) (astigma@astigmatic.com), with Reserved Font Name "Audiowide" |
 
-要点（OFL 1.1）：可自由使用、嵌入、修改、随软件一起再分发（含商用），但 ①字体本身不得单独售卖；②再分发时必须附带上面的版权声明与本许可；③修改版不得使用保留字体名。渲染出的视频成品不受限制。
+Key points (OFL 1.1): you may use, embed, modify and redistribute the fonts freely with software, including commercially, but (1) the fonts may not be sold on their own; (2) any redistribution must include the copyright notices above and this license; (3) modified versions may not use the reserved font names. Rendered videos are not restricted.
 
 ---
 

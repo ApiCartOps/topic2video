@@ -1,25 +1,25 @@
 #!/usr/bin/env python3
-"""配音 + 时间轴生成。项目根 = 本脚本所在 scripts/ 的上级目录。
-输入 narration.txt：
-  # CHAPTER <n> <标题>      章节标记（章节前自动加 chapter_gap 帧空白）
-  ## gap <帧数>             在下一句前额外插入空白帧
-  一句话|按竖线分成字幕短句            → 竖线只切字幕，不影响朗读
-                                       每块预算：中文 ≤16 字 / 英文 ≤48 字符（超了会打 ⚠ 并自动缩字号）
-                                       块首尾空格会去掉；英文片把块用空格拼回整句给 TTS（"a|b" 与 "a | b" 等价），中文直接拼接
-输出：
-  public/assets/<slug>/audio.wav（48k 立体声 16bit；slug 读 src/config.ts）
+"""Voiceover and timeline generation. Project root = the parent of this script's scripts/ directory.
+Input narration.txt:
+  # CHAPTER <n> <title>      chapter marker (adds chapter_gap blank frames before the chapter)
+  ## gap <frames>            inserts extra blank frames before the next sentence
+  A sentence|split by vertical bars into subtitle chunks   → the bars only split subtitles, not the speech
+                                       Budget per chunk: Chinese ≤16 characters / English ≤48 characters (over budget prints ⚠ and shrinks the font)
+                                       Leading and trailing spaces in each chunk are removed. English joins the chunks back with spaces for TTS ("a|b" and "a | b" are equivalent). Chinese joins them directly.
+Outputs:
+  public/assets/<slug>/audio.wav (48 kHz stereo 16-bit; slug is read from src/config.ts)
   script/timeline.json / timeline.md
-  src/common/subs.ts（字幕表）、src/common/timeline.ts（TOTAL_FRAMES / CHAPTER_STARTS / SENTENCES）
-逐句（或逐字幕块）缓存于 audio/cache/，改一句只重合成一句。
+  src/common/subs.ts (subtitle table), src/common/timeline.ts (TOTAL_FRAMES / CHAPTER_STARTS / SENTENCES)
+Each sentence (or each subtitle chunk) is cached in audio/cache/, so editing one sentence only re-synthesizes that sentence.
 
-TTS 引擎（`TTS_ENGINE`，默认 `auto` = 按解说词语言选；**跑之前先问用户有没有偏好的 TTS**，见 SKILL.md 确认点 3）：
-  edge     中文默认。edge-tts 云端合成，有词级边界 → 字幕节拍最准。VOICE=zh-CN-YunxiNeural RATE=+8%
-           词边界要显式请求（boundary='WordBoundary'，7.2.0 起的默认值不给），否则字幕起点会静默退化成插值。
-  kokoro   英文默认。kokoro-82m 本地推理（`pip install kokoro soundfile` + `brew install espeak-ng`）。
-           KOKORO_VOICE=am_liam（Liam，男声，与中文云希同定位）KOKORO_LANG=a KOKORO_SPEED=1.0
-  kokoro 没有词边界 → 改为「逐字幕块分别合成再拼接」，块起始帧因此也是精确的（CHUNK_PAD 调块间静音）。
-  用户有别的 TTS 偏好时不走本脚本：让他给成品配音 wav，按逐句/逐块时间轴手填 timeline.ts 与 subs.ts。
-其它环境变量：GAP/CHAPTER_GAP/LEAD/TAIL（帧）、EDGE_TRIES（edge 每句最多试几次，端点会间歇性返回空音频）。
+TTS engine (`TTS_ENGINE`; default `auto` picks based on the narration language. **Before running, ask the user whether they have a preferred TTS.** See SKILL.md confirmation point 3):
+  edge     Chinese default. Cloud synthesis with edge-tts, with word-level boundaries, so subtitle beats are the most accurate. VOICE=zh-CN-YunxiNeural RATE=+8%
+           Word boundaries must be requested explicitly (boundary='WordBoundary'; the default from edge-tts 7.2.0 onward does not give them). Otherwise subtitle starts silently fall back to interpolation.
+  kokoro   English default. Local inference with kokoro-82m (`pip install kokoro soundfile` plus `brew install espeak-ng`).
+           KOKORO_VOICE=am_liam (Liam, a male voice, positioned like the Chinese Yunxi) KOKORO_LANG=a KOKORO_SPEED=1.0
+  kokoro has no word boundaries, so each subtitle chunk is synthesized separately and then concatenated. Chunk start frames are still exact (CHUNK_PAD sets the silence between chunks).
+  If the user prefers a different TTS, do not use this script. Have them supply a finished voiceover wav, and fill in timeline.ts and subs.ts by hand from the sentence and chunk timings.
+Other environment variables: GAP / CHAPTER_GAP / LEAD / TAIL (frames), and EDGE_TRIES (how many times edge retries each sentence, because the endpoint sometimes returns empty audio).
 """
 import asyncio, hashlib, json, os, re, subprocess, sys
 import numpy as np
@@ -39,16 +39,16 @@ KOKORO_VOICE = os.environ.get('KOKORO_VOICE', 'am_liam')
 KOKORO_LANG = os.environ.get('KOKORO_LANG', 'a')       # a=American English, b=British
 KOKORO_SPEED = float(os.environ.get('KOKORO_SPEED', 1.0))
 KOKORO_SR = 24000
-CHUNK_PAD = float(os.environ.get('CHUNK_PAD', 0.06))  # 无词边界引擎：块间静音秒
-EDGE_TRIES = int(os.environ.get('EDGE_TRIES', 4))     # edge-tts 每句最多试几次（端点会间歇性返回空音频）
-GAP = int(os.environ.get('GAP', 10))          # 句间空白帧
-CHAPTER_GAP = int(os.environ.get('CHAPTER_GAP', 45))  # 章节前空白帧
-LEAD = int(os.environ.get('LEAD', 40))        # 片头静音帧
-TAIL = int(os.environ.get('TAIL', 90))        # 片尾静音帧
+CHUNK_PAD = float(os.environ.get('CHUNK_PAD', 0.06))  # engines without word boundaries: silence between chunks, in seconds
+EDGE_TRIES = int(os.environ.get('EDGE_TRIES', 4))     # max edge-tts attempts per sentence (the endpoint sometimes returns empty audio)
+GAP = int(os.environ.get('GAP', 10))          # blank frames between sentences
+CHAPTER_GAP = int(os.environ.get('CHAPTER_GAP', 45))  # blank frames before a chapter
+LEAD = int(os.environ.get('LEAD', 40))        # silent frames at the start of the video
+TAIL = int(os.environ.get('TAIL', 90))        # silent frames at the end of the video
 CACHE = f'{ROOT}/audio/cache'
 os.makedirs(CACHE, exist_ok=True)
 if ENGINE not in ('auto', 'edge', 'kokoro'):
-    raise SystemExit(f'未知 TTS_ENGINE={ENGINE}（可选 auto / edge / kokoro）')
+    raise SystemExit(f'Unknown TTS_ENGINE={ENGINE} (choose auto / edge / kokoro)')
 
 
 def parse(path):
@@ -81,27 +81,28 @@ def cache_path(text, ext):
 
 
 def detect_lang(items):
-    """解说词里 CJK 占比 ≥20% → 'zh'，否则 'en'。"""
+    """If CJK characters make up at least 20% of the narration, return 'zh'. Otherwise return 'en'."""
     txt = ''.join(it['raw'] for it in items if it['type'] == 'sent')
     cjk = sum(1 for c in txt if '一' <= c <= '鿿')
     return 'zh' if cjk >= 0.2 * max(1, len(txt)) else 'en'
 
 
-# 字幕块宽度预判：与 src/common/textfit.ts 用同一张 em 宽表（字体 fontTools 实测），
-# 直接算「44px 下会不会超过安全区 1160px」——比按字数判准，中英混排（如「几百个 token 一块」）不会误报。
-# 授稿建议仍是每块中文 ≤16 字 / 英文 ≤48 字符（见 narration-storyboard.md）。
+# Subtitle width precheck: uses the same em-width table as src/common/textfit.ts (measured with fontTools).
+# It computes directly whether a chunk at 44px would exceed the 1160px safe area. That is more accurate than counting characters,
+# because mixed Chinese and English (such as 「几百个 token 一块」) would otherwise trigger false alarms.
+# The writing guideline is still ≤16 Chinese characters or ≤48 English characters per chunk (see narration-storyboard.md).
 SUB_MAX_W = 1160
 SUB_SIZE = 44
-SUB_BUDGET = {'zh': '16 字', 'en': '48 字符'}
+SUB_BUDGET = {'zh': '16 characters', 'en': '48 characters'}
 
 
 def text_em(s):
-    """与 src/common/textfit.ts 的 textEm() 同一张表（改一处要同步另一处）。"""
+    """Same table as textEm() in src/common/textfit.ts. Change one and sync the other."""
     t = 0.0
     for ch in s:
         c = ord(ch)
         if c >= 0x2000:
-            t += 1.0                     # CJK / 全角，以及 U+2000 起的标点 / 箭头 / 数学符号（— … “ ” → ∑ 在 Noto 里都是 1em）
+            t += 1.0                     # CJK / fullwidth, and punctuation, arrows and math symbols from U+2000 on (— … “ ” → ∑ are all 1em in Noto)
         elif ch == ' ':
             t += 0.227
         elif 'A' <= ch <= 'Z':
@@ -111,14 +112,14 @@ def text_em(s):
         elif 'a' <= ch <= 'z':
             t += 0.566
         elif 0xc0 <= c < 0x250:
-            t += 0.58                    # 带重音的拉丁字母
+            t += 0.58                    # accented Latin letters
         else:
-            t += 0.325                   # 半角标点
+            t += 0.325                   # half-width punctuation
     return t
 
 
 def write_wav(path, x, sr):
-    """x：float32 单声道 (n,) 或立体声 (n,2) → 16bit PCM wav。"""
+    """x: float32 mono (n,) or stereo (n,2) → 16-bit PCM wav."""
     import wave
     a = np.asarray(x, dtype=np.float32)
     pcm = (np.clip(a, -1.0, 1.0) * 32767).astype(np.int16)
@@ -128,11 +129,11 @@ def write_wav(path, x, sr):
 
 
 async def synth_edge(text):
-    """edge-tts：整句合成 + 词级边界（会把 text 发送到微软云端端点）。
-    boundary='WordBoundary' 必须显式传：edge-tts 7.2.0 起该参数默认 'SentenceBoundary'，
-    不传就一个 WordBoundary 事件都收不到，chunk_starts() 会静默退化成按字数插值（字幕能偏半秒）。
-    端点会间歇性返回空音频（NoAudioReceived）：50 句的片子里随机一两句中招，同一句重试多半就过，
-    所以试 EDGE_TRIES 次；试完还拿不到就报错退出，不把空 mp3 当成品往下传。"""
+    """edge-tts: synthesizes the whole sentence and returns word-level boundaries (this sends text to Microsoft's cloud endpoint).
+    boundary='WordBoundary' must be passed explicitly. From edge-tts 7.2.0 the default is 'SentenceBoundary', so without it no WordBoundary
+    events arrive, and chunk_starts() silently falls back to interpolating by character count (subtitles can drift by half a second).
+    The endpoint sometimes returns empty audio (NoAudioReceived). In a 50-sentence video, one or two sentences hit this at random, and a retry usually succeeds,
+    so we try up to EDGE_TRIES times. If it still fails, exit with an error rather than passing an empty mp3 downstream."""
     import edge_tts
     mp3 = cache_path(text, '.mp3'); js = cache_path(text, '.json')
     if os.path.exists(mp3) and os.path.exists(js):
@@ -148,14 +149,14 @@ async def synth_edge(text):
                     words.append({'t': ch['offset'] / 1e7, 'd': ch['duration'] / 1e7, 'text': ch['text']})
             if audio:
                 break
-            why = '端点返回空音频'
-        except TypeError:                # boundary 参数是 edge-tts 7.2.0 才有的
-            raise SystemExit("edge-tts 版本过旧：pip install 'edge-tts==7.2.8'")
+            why = 'endpoint returned empty audio'
+        except TypeError:                # the boundary parameter only exists from edge-tts 7.2.0 on
+            raise SystemExit("edge-tts is too old: pip install 'edge-tts==7.2.8'")
         except Exception as e:
             why = f'{type(e).__name__}: {e}'
         if attempt == EDGE_TRIES:
-            raise SystemExit(f'edge-tts 试了 {EDGE_TRIES} 次仍拿不到音频（{why}）：{text[:30]}…')
-        print(f'  ⚠ edge-tts 第 {attempt} 次失败（{why}），{1.5 * attempt:.1f}s 后重试：{text[:16]}…')
+            raise SystemExit(f'edge-tts still returned no audio after {EDGE_TRIES} tries ({why}): {text[:30]}…')
+        print(f'  ⚠ edge-tts attempt {attempt} failed ({why}), retrying in {1.5 * attempt:.1f}s: {text[:16]}…')
         await asyncio.sleep(1.5 * attempt)
     open(mp3, 'wb').write(audio)
     json.dump(words, open(js, 'w'), ensure_ascii=False)
@@ -164,8 +165,8 @@ async def synth_edge(text):
 
 _kokoro = None
 
-# kokoro 读音覆写（只影响送给 TTS 的文本，字幕仍显示原词）。语法是 kokoro/misaki 的 [词](/音标/)。
-# 实测 kokoro 会把 CUDA/NIXL/MIG/DeepGEMM 逐字母拼读、把 v5.0 读成 "v five zero"，故在此覆写；按片子需要增删。
+# Pronunciation overrides for kokoro (these only change the text sent to TTS. Subtitles still show the original words). The syntax is kokoro/misaki's [word](/phonemes/).
+# Measured: kokoro reads CUDA, NIXL, MIG and DeepGEMM letter by letter, and reads v5.0 as "v five zero", so they are overridden here. Add or remove entries per video.
 PRONOUNCE = {
     'CUDA': '[CUDA](/kˈudə/)',
     'NIXL': '[NIXL](/nˈɪksəl/)',
@@ -182,7 +183,7 @@ def apply_pronounce(text):
 
 
 def synth_kokoro(text):
-    """kokoro-82m：本地推理，24kHz，无词边界。"""
+    """kokoro-82m: local inference, 24 kHz, no word boundaries."""
     global _kokoro
     text = apply_pronounce(text)
     au = cache_path(text, '.wav')
@@ -192,18 +193,18 @@ def synth_kokoro(text):
         try:
             from kokoro import KPipeline
         except ImportError:
-            raise SystemExit('TTS_ENGINE=kokoro 需要 kokoro：pip install kokoro soundfile；英文 G2P 另需 espeak-ng（brew install espeak-ng）')
+            raise SystemExit('TTS_ENGINE=kokoro needs kokoro: pip install kokoro soundfile. English G2P also needs espeak-ng (brew install espeak-ng)')
         _kokoro = KPipeline(lang_code=KOKORO_LANG)
     parts = []
     for r in _kokoro(text, voice=KOKORO_VOICE, speed=KOKORO_SPEED):
         a = getattr(r, 'audio', None)
         if a is None:
-            a = r[2]                                    # 旧版 yield (graphemes, phonemes, audio)
+            a = r[2]                                    # older versions yield (graphemes, phonemes, audio)
         if hasattr(a, 'detach'):
             a = a.detach().cpu().numpy()                # torch tensor
         parts.append(np.asarray(a, dtype=np.float32).reshape(-1))
     if not parts:
-        raise SystemExit(f'kokoro 没有产出音频：{text[:24]}…')
+        raise SystemExit(f'kokoro produced no audio: {text[:24]}…')
     write_wav(au, np.concatenate(parts), KOKORO_SR)
     return au
 
@@ -222,9 +223,9 @@ def trim_edges(x, thr=0.004):
 
 
 def chunk_starts(tts_text, chunks, words, lead_cut, dur, sep=''):
-    """按 | 切出的字幕短句 → 每块在句内的起始秒。word 边界按字符游标对到原句。
-    tts_text == sep.join(chunks)：英文 sep=' '，游标要跳过块间的那个空格。"""
-    # 每个字符的起始时间（按 word 边界填充）
+    """Subtitle chunks split by | → start second of each chunk within the sentence. Word boundaries are matched back to the original sentence with a character cursor.
+    tts_text == sep.join(chunks). For English, sep=' ', and the cursor must skip the space between chunks."""
+    # start time of each character (filled from word boundaries)
     char_t = [None] * len(tts_text)
     cur = 0
     for w in words:
@@ -239,7 +240,7 @@ def chunk_starts(tts_text, chunks, words, lead_cut, dur, sep=''):
         for i in range(p, min(len(tts_text), p + len(wt))):
             char_t[i] = (w['t'] - lead_cut, w['d'])
         cur = p + len(wt)
-    # 每块首字时间
+    # start time of each chunk's first character
     starts = []
     pos = 0
     for c in chunks:
@@ -250,7 +251,7 @@ def chunk_starts(tts_text, chunks, words, lead_cut, dur, sep=''):
                 st = char_t[i][0]; break
         starts.append(st)
         pos += len(c) + len(sep)
-    # 兜底：无边界的块按字数线性插值
+    # fallback: chunks without boundaries are interpolated by character count
     for i, st in enumerate(starts):
         if st is None:
             prev = starts[i - 1] if i > 0 and starts[i - 1] is not None else 0.0
@@ -260,9 +261,9 @@ def chunk_starts(tts_text, chunks, words, lead_cut, dur, sep=''):
 
 
 async def synth_sentence(chunks, sep=''):
-    """一句 → (音频 float32 单声道, 每个字幕块在句内的起始秒, 句长秒)。sep 是块之间的连接符（英文 ' '，中文 ''）。
-    edge：整句合成一次，块起点按词边界对齐（最准）。
-    kokoro：无词边界 → 逐字幕块分别合成再拼接，块起点因此是精确的，代价是块界断句略生硬。"""
+    """One sentence → (mono float32 audio, start second of each subtitle chunk within the sentence, sentence length in seconds). sep is the joiner between chunks (' ' for English, '' for Chinese).
+    edge: synthesizes the whole sentence once, and chunk starts are aligned to word boundaries (most accurate).
+    kokoro: no word boundaries, so each subtitle chunk is synthesized separately and then concatenated. Chunk starts are therefore exact, at the cost of slightly abrupt breaks between chunks."""
     text = sep.join(chunks)
     if ENGINE == 'edge':
         au, words = await synth_edge(text)
@@ -287,11 +288,11 @@ async def main(narr):
     lang = detect_lang(items)
     if ENGINE == 'auto':
         ENGINE = 'edge' if lang == 'zh' else 'kokoro'
-        print(f'解说词语言 {lang} → TTS_ENGINE={ENGINE}（有偏好请显式传 TTS_ENGINE=…）')
+        print(f'Narration language {lang} → TTS_ENGINE={ENGINE} (to override, set TTS_ENGINE=… explicitly)')
     if lang != CFG_LANG:
-        print(f"⚠ src/config.ts 的 lang: '{CFG_LANG}' 与解说词语言 {lang} 不一致——改过来，"
-              f"否则标题压窄与居中基线会按错的语言算")
-    # 字幕块拼回整句给 TTS 时的连接符：英文词与词之间要有空格（否则 "powerful|but" 会被念成 powerfulbut），中文直接拼
+        print(f"⚠ lang: '{CFG_LANG}' in src/config.ts does not match the narration language {lang}. Fix it, "
+              f"or title narrowing and centered baselines will be calculated for the wrong language")
+    # Joiner used when the subtitle chunks are rejoined into a whole sentence for TTS. English words need spaces between them (otherwise "powerful|but" is read as "powerfulbut"). Chinese joins directly.
     sep = ' ' if lang == 'en' else ''
     t = LEAD / FPS
     audio_parts = []  # (start_sec, np.array)
@@ -321,7 +322,7 @@ async def main(narr):
         t += dur + GAP / FPS
     t += TAIL / FPS
     total = int(np.ceil(t * FPS))
-    # 合成音轨
+    # mix the audio track
     y = np.zeros(int(total / FPS * SR) + SR, dtype=np.float32)
     for st, x in audio_parts:
         a = int(st * SR); y[a:a + len(x)] += x
@@ -331,7 +332,7 @@ async def main(narr):
     os.makedirs(f'{REM}/public/assets/{SLUG}', exist_ok=True)
     wav = f'{REM}/public/assets/{SLUG}/audio.wav'
     write_wav(wav, np.stack([y, y], 1), SR)
-    # 修正字幕：相邻句字幕不重叠；同句块间连续
+    # fix subtitles: subtitles of adjacent sentences must not overlap, and chunks within a sentence stay continuous
     all_subs = []
     for s in sentences:
         for k, sb in enumerate(s['subs']):
@@ -341,48 +342,48 @@ async def main(narr):
     for i in range(len(all_subs) - 1):
         if all_subs[i]['to'] >= all_subs[i + 1]['from']:
             all_subs[i]['to'] = all_subs[i + 1]['from'] - 1
-    # 字幕块宽度体检：超安全区的块会被 Subtitle.tsx 缩字号（>1.3 倍还会折两行压进内容区），正确做法是回去切文案
+    # subtitle width check: chunks wider than the safe area get shrunk by Subtitle.tsx (over 1.3× they also wrap onto two lines and push into the content area). The correct fix is to split the script.
     over = [(sb, text_em(sb['text']) * SUB_SIZE) for sb in all_subs]
     over = [(sb, w) for sb, w in over if w > SUB_MAX_W]
     if over:
-        print(f'⚠ {len(over)}/{len(all_subs)} 块字幕在 {SUB_SIZE}px 下超过安全区 {SUB_MAX_W}px'
-              f'（会自动缩字号；建议每块 {SUB_BUDGET[lang]}，用 | 再切一刀）：')
+        print(f'⚠ {len(over)}/{len(all_subs)} subtitle chunks exceed the {SUB_MAX_W}px safe area at {SUB_SIZE}px'
+              f' (they will shrink automatically; better to keep each chunk to {SUB_BUDGET[lang]} and add another | to split):')
         for sb, w in over[:5]:
-            print(f"    f{sb['from']} (≈{w:.0f}px{'，会折两行' if w > SUB_MAX_W * 1.3 else ''}) {sb['text']}")
-    # 输出
+            print(f"    f{sb['from']} (≈{w:.0f}px{', will wrap onto two lines' if w > SUB_MAX_W * 1.3 else ''}) {sb['text']}")
+    # output
     tl = {'fps': FPS, 'total_frames': total, 'engine': ENGINE,
           'voice': VOICE if ENGINE == 'edge' else KOKORO_VOICE,
           'rate': RATE if ENGINE == 'edge' else KOKORO_SPEED,
           'gap': GAP, 'chapter_gap': CHAPTER_GAP, 'lead': LEAD, 'tail': TAIL,
           'lang': lang, 'chapters': chapters, 'sentences': sentences, 'chars': total_chars, 'words': total_words,
           'speech_sec': round(speech_sec, 2)}
-    unit, cnt = ('字', total_chars) if lang == 'zh' else ('词', total_words)
+    unit, cnt = ('chars', total_chars) if lang == 'zh' else ('words', total_words)
     os.makedirs(f'{ROOT}/script', exist_ok=True)
     json.dump(tl, open(f'{ROOT}/script/timeline.json', 'w'), ensure_ascii=False, indent=1)
     with open(f'{ROOT}/script/timeline.md', 'w') as f:
-        f.write(f"# 时间轴（{ENGINE} · {tl['voice']} {tl['rate']}，共 {total} 帧 = {total/FPS:.1f}s，{cnt} {unit}，语速 {cnt/max(1e-6,speech_sec):.2f} {unit}/s）\n\n")
-        f.write('| 句 | 章 | 帧 from–to | 时长 | 文本（| 为字幕切分） |\n|---|---|---|---|---|\n')
+        f.write(f"# Timeline ({ENGINE} · {tl['voice']} {tl['rate']}, {total} frames = {total/FPS:.1f}s, {cnt} {unit}, speaking rate {cnt/max(1e-6,speech_sec):.2f} {unit}/s)\n\n")
+        f.write('| Sentence | Chapter | Frames from–to | Length | Text (| marks subtitle splits) |\n|---|---|---|---|---|\n')
         ci = {c['from']: c for c in chapters}
         for s in sentences:
             for c in chapters:
                 if s['from'] >= c['from'] and (not any(s['from'] >= c2['from'] > c['from'] for c2 in chapters)):
                     pass
             f.write(f"| {s['id']} | {s['chapter']} | {s['from']}–{s['to']} | {(s['to']-s['from']+1)/FPS:.1f}s | {'｜'.join(sb['text'] for sb in s['subs'])} |\n")
-        f.write('\n## 章节起始帧\n')
+        f.write('\n## Chapter start frames\n')
         for c in chapters:
-            f.write(f"- 第{c['n']}章 {c['title']}：f{c['from']}\n")
-    # 文本一律走 json.dumps：JSON 字符串就是合法的 TS 字面量，且会转义 " \ 与控制字符
-    # （手工拼引号会被解说词里的 \ ' ` ${} 破坏语法，甚至把文本写成代码）
+            f.write(f"- Chapter {c['n']} {c['title']}: f{c['from']}\n")
+    # all text goes through json.dumps: a JSON string is a valid TS literal, and it escapes " \ and control characters.
+    # (Hand-built quotes break on \ ' ` ${} in the narration, and can even turn the text into code.)
     def lit(s):
         return json.dumps(s, ensure_ascii=False)
     with open(f'{REM}/src/common/subs.ts', 'w') as f:
-        f.write('// 自动生成：scripts/tts_build.py（词边界 / 逐块合成 → 字幕块）。手改请改 script/narration.txt 后重跑。\n')
+        f.write('// Auto-generated by scripts/tts_build.py (word boundaries / per-chunk synthesis → subtitle chunks). To change it, edit script/narration.txt and rerun.\n')
         f.write("export type SubEntry = {from: number; to: number; text: string};\nexport const SUBS: SubEntry[] = [\n")
         for sb in all_subs:
             f.write(f"  {{from: {sb['from']}, to: {sb['to']}, text: {lit(sb['text'])}}},\n")
         f.write('];\n')
     with open(f'{REM}/src/common/timeline.ts', 'w') as f:
-        f.write('// 自动生成：scripts/tts_build.py。帧号 1 起含端点。\n')
+        f.write('// Auto-generated by scripts/tts_build.py. Frame numbers start at 1 and are inclusive.\n')
         f.write(f'export const TOTAL_FRAMES = {total};\n')
         f.write('export const CHAPTER_STARTS: Array<{n: number; title: string; from: number}> = [\n')
         for c in chapters:

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""动效密度自测（§9 动词驱动的持续动作）：渲染某组（或成片）低分辨率抽帧，量内容区逐帧变化，按分镜表镜头区间统计"静止帧"占比与最长静止。
-用法：python3 scripts/motion_check.py G3            → 渲 G3 预览合成（含覆盖层）该组帧区间，每 3 帧一张、0.25 倍
-     python3 scripts/motion_check.py --frames fin_frames   → 对成片逐帧目录（QC 用；每 3 帧取一张）
-判据：静止帧（内容区 320×180 灰度平均变化 <0.35）占比 ≤40%，最长静止 ≤1.0 s。
-注意：组级（低分辨率渲染）读数偏松，成片 fin_frames 复测才是最终判据；--frames 模式额外给出最长静止段的全分辨率变化像素数（真静 <800 / 小面积动作 <2500）。"""
+"""Motion-density self-test (§9 verb-driven continuous motion). Renders low-resolution frames for one group (or the final cut), measures frame-to-frame change in the content area, and reports still-frame share and longest still run per shot from the storyboard.
+Usage: python3 scripts/motion_check.py G3            → renders the G3 preview composition (with the overlay) for that group's frame range, one frame every 3, at 0.25×
+       python3 scripts/motion_check.py --frames fin_frames   → checks the final-cut frame directory (used by QC; takes one frame every 3)
+Criterion: still frames (content area, 320×180 grayscale mean change <0.35) must be ≤40% of the shot, and the longest still run ≤1.0 s.
+Note: group-level readings (low-resolution render) run loose. The final-cut fin_frames check is the final criterion. The --frames mode also reports, for the longest still run, the number of changed full-resolution pixels (true still <800, small-area motion <2500)."""
 import sys, os, re, glob, subprocess, tempfile, shutil
 import numpy as np
 from PIL import Image
@@ -14,7 +14,7 @@ shots = [(m.group(1), int(m.group(2)), int(m.group(3))) for m in re.finditer(r'^
 
 def load(path):
     im = Image.open(path).convert('L').resize((320, 180))
-    return np.asarray(im).astype(int)[28:158, :]   # 去掉 HUD（y<110）与字幕/进度条（y>630）
+    return np.asarray(im).astype(int)[28:158, :]   # strip the HUD (y<110) and the subtitles and progress bar (y>630)
 
 if sys.argv[1] == '--frames':
     d = sys.argv[2]; files = sorted(glob.glob(f'{d}/f_*.jpg'))[::3]
@@ -23,13 +23,13 @@ if sys.argv[1] == '--frames':
 else:
     comp = sys.argv[1]
     gs = [s for s in shots if True]
-    # 组的镜头区间：从分镜表该组表格取（表头 "## Gn（"）
+    # the group's shot range comes from its table in the storyboard (heading "## Gn（")
     m = re.search(r'## ' + comp + r'（.*?\n(.*?)(?=\n## |\n---)', sb, re.S)
     ids = re.findall(r'^\| (SC\d\d)', m.group(1), re.M) if m else []
     rng = [(a, b) for (i, a, b) in shots if i in ids]
     a, b = min(x[0] for x in rng), max(x[1] for x in rng)
     step = 3
-    # 每次重新 bundle（代码在变、多组并发），用进程独占目录，跑完删除
+    # re-bundle every time (code keeps changing, and groups run in parallel). Each run gets its own directory, deleted afterward.
     bundle = f'{ROOT}/build_dev_mc_{os.getpid()}'
     subprocess.run(['npx', 'remotion', 'bundle', 'src/index.ts', '--out-dir', bundle, '--log=error'], cwd=ROOT, check=True)
     out = tempfile.mkdtemp(prefix='motion_check_')
@@ -40,7 +40,7 @@ else:
     shutil.rmtree(bundle, ignore_errors=True)
 
 diffs = [(frames[i + 1][0], np.abs(frames[i + 1][1] - frames[i][1]).mean()) for i in range(len(frames) - 1)]
-# 次级读数（只在 --frames 模式）：最长静止段内全分辨率"变化像素数"（>25 灰阶 / 3 帧）中位数——区分「真静」(<800) 与「小面积持续动作」(800–2500，如数据包 / 游标)
+# secondary reading (--frames mode only): median number of full-resolution "changed pixels" (>25 gray levels per 3 frames) within the longest still run. Separates true stills (<800) from small-area continuous motion (800–2500, such as data packets or cursors).
 FULL = sys.argv[1] == '--frames'
 def full_changed(s, e):
     d = sys.argv[2]
@@ -65,7 +65,7 @@ for sid, a, b in shots:
     if FULL and verdict != 'OK' and best > 0:
         s_ = dd[end - best + 1][0] - step; e_ = dd[end][0]
         cp = full_changed(max(a, s_), e_)
-        cls = '真静' if cp < 800 else ('小面积动作' if cp < 2500 else '有动作')
+        cls = 'true still' if cp < 800 else ('small-area motion' if cp < 2500 else 'moving')
         extra = f'   {max(a, s_)}-{e_}  {cp:6d}  {cls}'
     print(f'{sid:6s} {(b-a+1)/30:4.1f}s {still:6.0f}% {longest:7.1f}s  {verdict}{extra}')
 print(f'shots failing: {bad}')

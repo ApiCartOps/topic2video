@@ -1,4 +1,4 @@
-# 解说词模板：删掉本注释，按 reference/narration-storyboard.md 写。`# CHAPTER n 章名` 分章；一行一句；`|` 只切字幕块（每块中文 ≤16 字 / 英文 ≤48 字符；英文块之间自动补空格）。
+# Narration template: delete this comment and write per reference/narration-storyboard.md. `# CHAPTER n Title` starts a chapter. One sentence per line. `|` only splits subtitle chunks (Chinese ≤16 characters / English ≤48 characters per chunk; English chunks get a space added between them automatically).
 # CHAPTER 1 第一章名
 第一句|切成字幕块
 # CHAPTER 2 第二章名
